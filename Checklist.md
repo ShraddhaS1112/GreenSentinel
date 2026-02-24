@@ -1,8 +1,9 @@
 14-Day Checklist to Win Demo
 Day 1: Amplify Backend + PWA Scaffold
-[ ] npm create vite@latest frontend -- --template react-ts → TypeScript + SWC
 
-[ ] cd frontend && npm i && npm run dev → localhost:5173 works
+[X] npm create vite@latest frontend -- --template react-ts → TypeScript + SWC
+
+[x] cd frontend && npm i && npm run dev → localhost:5173 works
 
 [ ] npm i -g @aws-amplify/cli && amplify configure
 
