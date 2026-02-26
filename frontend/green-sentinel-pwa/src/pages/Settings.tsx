@@ -22,7 +22,7 @@ import { Phone as PhoneIcon, Save as SaveIcon, Info as InfoIcon } from '@mui/ico
 
 export const Settings: React.FC = () => {
   const [phoneNumber, setPhoneNumber] = useState(
-    localStorage.getItem('alertPhoneNumber') || '+919970187593'
+    localStorage.getItem('alertPhoneNumber') || ''
   );
   const [language, setLanguage] = useState(localStorage.getItem('alertLanguage') || 'mr');
   const [whatsappEnabled, setWhatsappEnabled] = useState(
@@ -135,7 +135,7 @@ export const Settings: React.FC = () => {
                 label="फोन नंबर"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+919970187593"
+                placeholder="+91XXXXXXXXXX"
                 disabled={!whatsappEnabled}
                 InputProps={{
                   startAdornment: <PhoneIcon sx={{ marginRight: '8px', color: '#64748b' }} />,
@@ -160,7 +160,7 @@ export const Settings: React.FC = () => {
                 }}
               >
                 <Typography variant="caption" sx={{ fontFamily: 'Noto Sans Devanagari, sans-serif' }}>
-                  देश कोड सह पूर्ण फोन नंबर प्रविष्ट करा (उदा: +919970187593)
+                  देश कोड सह पूर्ण फोन नंबर प्रविष्ट करा (उदा: +91XXXXXXXXXX)
                 </Typography>
               </Alert>
             </CardContent>

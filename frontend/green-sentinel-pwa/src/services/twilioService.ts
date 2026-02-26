@@ -16,12 +16,12 @@ interface AlertMessage {
   language: 'hi' | 'mr' | 'en';
 }
 
-// Twilio configuration
+// Twilio configuration — all values must be set in frontend/.env.local (see .env.example)
 const TWILIO_CONFIG: TwilioConfig = {
-  accountSid: 'xxx',
-  authToken: import.meta.env.VITE_TWILIO_AUTH_TOKEN || '[AuthToken]',
-  fromNumber: 'whatsapp:+14155238886',
-  toNumber: 'whatsapp:+xxx', // Farmer's WhatsApp number
+  accountSid: import.meta.env.VITE_TWILIO_ACCOUNT_SID || '',
+  authToken: import.meta.env.VITE_TWILIO_AUTH_TOKEN || '',
+  fromNumber: import.meta.env.VITE_TWILIO_WHATSAPP_FROM || '',
+  toNumber: import.meta.env.VITE_TWILIO_WHATSAPP_TO || '',
 };
 
 // Message templates in different languages

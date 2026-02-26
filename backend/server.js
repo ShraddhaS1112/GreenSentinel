@@ -15,11 +15,24 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Twilio Configuration
-const accountSid = process.env.TWILIO_ACCOUNT_SID || 'xxxx';
-const authToken = process.env.TWILIO_AUTH_TOKEN || '[AuthToken]';
-const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER || '+1234567890';
-const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
+// Twilio Configuration — all values must be set in .env (see .env.example)
+const requiredEnvVars = [
+  'TWILIO_ACCOUNT_SID',
+  'TWILIO_AUTH_TOKEN',
+  'TWILIO_PHONE_NUMBER',
+  'TWILIO_WHATSAPP_NUMBER',
+];
+const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
+if (missingVars.length > 0) {
+  console.error(`\n❌ Missing required environment variables: ${missingVars.join(', ')}`);
+  console.error('Copy backend/.env.example to backend/.env and fill in your Twilio credentials.\n');
+  process.exit(1);
+}
+
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
 
 const client = twilio(accountSid, authToken);
 

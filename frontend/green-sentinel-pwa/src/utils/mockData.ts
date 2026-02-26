@@ -30,7 +30,7 @@ export const initialFarmData: Record<string, FarmData> = {
     lastUpdate: 'अभी',
     threatType: null,
     language: 'mr',
-    phoneNumber: '+919970187593',
+    phoneNumber: '+91XXXXXXXXXX',
   },
   'farm-2': {
     id: 'farm-2',
@@ -42,7 +42,7 @@ export const initialFarmData: Record<string, FarmData> = {
     lastUpdate: 'अभी',
     threatType: null,
     language: 'mr',
-    phoneNumber: '+919970187593',
+    phoneNumber: '+91XXXXXXXXXX',
   },
   'farm-3': {
     id: 'farm-3',
@@ -54,7 +54,7 @@ export const initialFarmData: Record<string, FarmData> = {
     lastUpdate: 'अभी',
     threatType: null,
     language: 'hi',
-    phoneNumber: '+919970187593',
+    phoneNumber: '+91XXXXXXXXXX',
   },
 };
 

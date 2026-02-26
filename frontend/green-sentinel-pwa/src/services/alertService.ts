@@ -15,7 +15,7 @@ const config = {
   confidenceThreshold: parseInt(import.meta.env.VITE_ALERT_CONFIDENCE_THRESHOLD || '75'),
   cooldownSeconds: parseInt(import.meta.env.VITE_ALERT_COOLDOWN_SECONDS || '300'),
   backendUrl: import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001',
-  phoneNumber: import.meta.env.VITE_ALERT_PHONE_NUMBER || '+919970187593',
+  phoneNumber: import.meta.env.VITE_ALERT_PHONE_NUMBER || '',
 };
 
 // Track last alert time per threat type to implement cooldown
