@@ -18,10 +18,10 @@ interface AlertMessage {
 
 // Twilio configuration
 const TWILIO_CONFIG: TwilioConfig = {
-  accountSid: 'ACc058ea0d13625a7ab21ae68cab085600',
+  accountSid: 'xxx',
   authToken: import.meta.env.VITE_TWILIO_AUTH_TOKEN || '[AuthToken]',
   fromNumber: 'whatsapp:+14155238886',
-  toNumber: 'whatsapp:+919970187593', // Farmer's WhatsApp number
+  toNumber: 'whatsapp:+xxx', // Farmer's WhatsApp number
 };
 
 // Message templates in different languages

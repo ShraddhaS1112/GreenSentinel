@@ -16,7 +16,7 @@ app.use(cors({
 app.use(express.json());
 
 // Twilio Configuration
-const accountSid = process.env.TWILIO_ACCOUNT_SID || 'ACc058ea0d13625a7ab21ae68cab085600';
+const accountSid = process.env.TWILIO_ACCOUNT_SID || 'xxxx';
 const authToken = process.env.TWILIO_AUTH_TOKEN || '[AuthToken]';
 const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER || '+1234567890';
 const twilioWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER || 'whatsapp:+14155238886';
