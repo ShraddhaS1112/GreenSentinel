@@ -87,7 +87,7 @@ npm install
 ### 2. Configure Environment
 ```bash
 # Backend .env
-TWILIO_ACCOUNT_SID=ACc058ea0d13625a7ab21ae68cab085600
+TWILIO_ACCOUNT_SID=xxxx
 TWILIO_AUTH_TOKEN=your_auth_token
 TWILIO_PHONE_NUMBER=+1234567890
 TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
