@@ -1,129 +1,149 @@
-14-Day Checklist to Win Demo
-Day 1: Amplify Backend + PWA Scaffold
+# Green-Sentinel Development Roadmap
 
-- [x] npm create vite@latest frontend -- --template react-ts → TypeScript + SWC
+## Phase 1: MVP Foundation (COMPLETED ✅)
 
-- [x] cd frontend && npm i && npm run dev → localhost:5173 works
+### Day 1-2: PWA Scaffold + Backend
+- [x] Vite React TypeScript setup
+- [x] Frontend running on localhost:5173
+- [x] Express backend on localhost:3001
+- [x] CORS configured for frontend-backend communication
+- [x] Dashboard with farm cards + threat display
+- [x] Offline support (service worker + cache)
 
-[ ] npm i -g @aws-amplify/cli && amplify configure
+### Day 2: WhatsApp Integration (COMPLETED ✅)
+- [x] Twilio WhatsApp API integration
+- [x] Backend `/api/send-alert` endpoint
+- [x] Backend `/api/test-alert` endpoint
+- [x] Frontend alert service with cooldown + confidence threshold
+- [x] Settings page for alert configuration
+- [x] Multi-language support (Marathi, Hindi, English)
+- [x] Environment-based configuration (.env.local)
 
-[ ] amplify init → appName: "GreenSentinel", env: "dev"
+### Day 2: UI/UX Polish (COMPLETED ✅)
+- [x] Emergency board with threat alerts
+- [x] Threat history display
+- [x] Farm health visualization
+- [x] Responsive design for mobile
 
-[ ] amplify add auth → Default Cognito configuration
+---
 
-[ ] amplify add data → Farm{id, name, lat, lon, phone, language} + Threat{id, farmID, type, confidence, timestamp, snapshotURL}
+## Phase 2: NDVI + Satellite Integration (NEXT - Day 1)
 
-[ ] amplify push → Backend deployed, get AppSync URL
+### Setup & Dependencies
+- [ ] Install Leaflet: `npm i react-leaflet leaflet @types/leaflet` (in frontend folder)
+- [ ] Download Pune Landsat sample from landsatlook.usgs.gov (Search "Pimpri-Chinchwad 2025")
+- [ ] Create AWS account + set up billing alerts
 
-Day 2: PWA Frontend Core (Req 1)
-[ ] npm i aws-amplify @aws-amplify/ui-react vite-plugin-pwa tailwindcss @heroicons/react leaflet react-leaflet
+### AWS Budget Setup
+- [ ] Create $0 budget in AWS Billing Console
+- [ ] Set email alert at ₹0.01 spend
+- [ ] Enable Free Tier notifications
 
-[ ] Configure vite.config.ts → PWA manifest, service worker
+### NDVI Prototype
+- [ ] Fork SageMaker "satellite imagery tutorial" notebook
+- [ ] Upload GeoTIFF to S3 bucket
+- [ ] Create Lambda for NDVI calculation: `(NIR-Red)/(NIR+Red)`
+- [ ] Store NDVI results in DynamoDB
+- [ ] Build React dashboard with color-coded heatmap:
+  - Green (0.6+) = Healthy crops
+  - Yellow (0.3-0.6) = Stressed crops
+  - Red (<0.3) = Critical
 
-[ ] Setup Amplify in main.tsx → <Authenticator><App/></Authenticator>
+### WhatsApp + SNS Integration
+- [ ] Test WhatsApp alerts via AWS SNS → Twilio API
+- [ ] Trigger alerts on low NDVI values
 
-[ ] Create Dashboard.tsx → Farm cards + Leaflet map
+---
 
-[ ] amplify add hosting → amplify publish → Live PWA URL
+## Phase 3: Camera Integration (Day 3+)
 
-Day 3: S3 + Frame Acquisition Lambda (Req 2)
-[ ] AWS Console → Create gs-frames-bucket (lifecycle: delete after 24h)
+### Hardware Setup
+- [ ] Set up Raspberry Pi + camera module
+- [ ] Configure MQTT → AWS IoT Core
+- [ ] Stream live camera feed
 
-[ ] Create frame-acquisition Lambda → Mock RTSP (download test images → S3 every 10s)
+### AI Detection
+- [ ] Amazon Rekognition Custom Labels for crop disease detection
+- [ ] Train model on farm disease images
+- [ ] Real-time inference on camera frames
 
-[ ] EventBridge rule → Trigger Lambda every 10s
+### Hybrid Dashboard
+- [ ] Merge satellite NDVI data with camera feed
+- [ ] Display combined farm health score
+- [ ] Show disease + threat alerts together
 
-[ ] Test: Lambda runs → images in S3 bucket
+---
 
-Day 4: Bedrock Vision Threat Detection (Req 3)
-[ ] vision-threat Lambda → S3 trigger on frame upload
+## Phase 4: Hackathon Polish (Weekend)
 
-[ ] Bedrock Claude 3.5 Sonnet → Prompt: "Detect fire/human/animal in farm image, return JSON {threat: string, confidence: number}"
+### Deployment
+- [ ] Deploy React app via AWS Amplify
+- [ ] Set up custom domain
+- [ ] Enable HTTPS
 
-[ ] If confidence >80% → Create Threat record in DynamoDB via AppSync
+### Localization
+- [ ] Add Marathi farmer interface
+- [ ] Add Hindi farmer interface
+- [ ] Test with native speakers
 
-[ ] Test: Upload fire image → Threat record created
+### Demo Preparation
+- [ ] Record 2-minute demo video:
+  - Satellite imagery → NDVI calculation
+  - AI threat detection
+  - WhatsApp farmer alert
+  - Real-time dashboard update
+- [ ] Live demo setup: 2 phones (PWA + WhatsApp receiver)
+- [ ] Pitch deck: "Zero-install PWA, Free Tier compliant, scales to 1000 farms"
 
-Day 5: Test E2E Frame → Threat
-[ ] Manual test: Upload intruder image → Bedrock detects → DynamoDB record → PWA shows threat
+### Submission
+- [ ] Push to GitHub with professional README
+- [ ] Include architecture diagram
+- [ ] Submit AWS account ID for credits
 
-[ ] Add reconnection logic to frame-acquisition (try/except + backoff)
+---
 
-[ ] Verify PWA offline cache works (Req 1.2)
+## Current Status
 
-Day 6: Sentinel Hub NDVI Integration (Req 4)
-[ ] Get free Sentinel Hub API key (dataspace.copernicus.eu)
+✅ **Completed:**
+- PWA frontend with offline support
+- Express backend with Twilio integration
+- WhatsApp alerts with configurable thresholds
+- Multi-language support
+- Settings page for user configuration
 
-[ ] ndvi-health Lambda → Daily cron (06:00 UTC) → Fetch NDVI for farm bbox
+⏳ **Next Immediate Steps:**
+1. Install Leaflet for map visualization
+2. Download Pune Landsat satellite data
+3. Set up AWS account + billing alerts
+4. Create NDVI prototype with Lambda
 
-[ ] Calculate FarmHealthScore = NDVI × 100 → Store in DynamoDB
+---
 
-[ ] Frontend: NDVI heatmap (Red-Yellow-Green based on 0.3/0.6 thresholds)
+## Success Metrics
 
-Day 7: Mid-Week Demo Prep
-[ ] Video record: PWA install → Add farm → Mock threat → PWA shows alert
+| Phase | Success Criteria |
+|-------|-----------------|
+| Phase 1 | ✅ WhatsApp alerts working, PWA offline-capable |
+| Phase 2 | NDVI heatmap displays, satellite data integrated |
+| Phase 3 | Camera feed + disease detection working |
+| Phase 4 | 2-min demo video, deployed on Amplify |
 
-[ ] Screenshot Free Tier usage (Billing Console) → Prove $0 spend
+---
 
-[ ] Push to GitHub → Clean README with architecture diagram
+## Quick Commands
 
-Day 8: Twilio WhatsApp Alerts (Req 5)
-[ ] Twilio Sandbox → Get WhatsApp test number + webhook URL
+```bash
+# Start frontend
+cd frontend/green-sentinel-pwa && npm run dev
 
-[ ] alert-delivery Lambda → Trigger on new Threat (AppSync subscription)
+# Start backend
+cd backend && npm run dev
 
-[ ] Bhashini API → Translate to Hindi/Marathi: "Alert: {threat} detected at {farm}, confidence {confidence}%"
+# Install Leaflet
+cd frontend/green-sentinel-pwa && npm i react-leaflet leaflet @types/leaflet
 
-[ ] Twilio → Send WhatsApp with snapshot image
-
-Day 9: Latency Monitoring (Req 6)
-[ ] CloudWatch Logs → Measure frame→alert time (<10s)
-
-[ ] Add timing metrics to all Lambdas (capture timestamp → delivery timestamp)
-
-[ ] Alarm if latency >10s → Email yourself
-
-Day 10: Multi-Farm + RBAC (Req 8)
-[ ] AppSync resolvers → Filter threats by user/farm ownership
-
-[ ] Cognito Groups → farm_owner role
-
-[ ] Frontend → Dropdown switch between farms (<2s load)
-
-Day 11: Security Hardening (Req 7)
-[ ] AWS Secrets Manager → Encrypt mock camera credentials
-
-[ ] Lambda IAM roles → Least privilege (Bedrock invoke, S3 put, DynamoDB write)
-
-[ ] Frontend → HTTPS certificate pinning
-
-Day 12: Reliability (Req 9)
-[ ]  Lambda retries → 3 attempts with exponential backoff
-
- [ ] Dead letter queue for failed alerts
-
- [ ] Test failure recovery: Kill Lambda → Auto-restart
-
-Day 13: Cost Optimization (Req 10)
- [ ] CloudWatch Budget → $10 alert threshold
-
- [ ] S3 lifecycle → Delete frames after 24h
-
- [ ] DynamoDB on-demand → Auto-scale within Free Tier
-
-Day 14: Winning Demo
- [ ] Full video: PWA → Add farm → NDVI updates → Threat detection → Hindi WhatsApp alert (10s)
-
- [ ] Live demo setup: 2 phones (PWA + WhatsApp receiver)
-
-[ ]  Pitch deck: "Zero-install PWA, Free Tier compliant, scales to 1000 farms"
-
-[ ]  GitHub repo → Professional README + demo video
-
-Daily Success Metrics
-Day	Success =
-1-2	Live PWA + CRUD farms/threats
-5	Frame → Bedrock → Threat pipeline
-8	WhatsApp alert received (<10s)
-14	Judge says "This wins!"
-Commit every completed day to GitHub. Track Free Tier usage daily. You're building a hackathon champion! 🏆
+# Test WhatsApp
+curl -X POST http://localhost:3001/api/test-alert \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumber": "+919970187593"}'
+```

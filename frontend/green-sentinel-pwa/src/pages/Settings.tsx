@@ -217,7 +217,7 @@ export const Settings: React.FC = () => {
                 </Typography>
                 <Slider
                   value={confidenceThreshold}
-                  onChange={(e, newValue) => setConfidenceThreshold(newValue as number)}
+                  onChange={(_, newValue) => setConfidenceThreshold(newValue as number)}
                   min={0}
                   max={100}
                   step={5}
@@ -262,7 +262,7 @@ export const Settings: React.FC = () => {
                 </Typography>
                 <Slider
                   value={cooldownMinutes}
-                  onChange={(e, newValue) => setCooldownMinutes(newValue as number)}
+                  onChange={(_, newValue) => setCooldownMinutes(newValue as number)}
                   min={0}
                   max={60}
                   step={5}
