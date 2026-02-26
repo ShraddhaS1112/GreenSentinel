@@ -28,7 +28,7 @@
 ### 1. Set Environment Variables
 ```bash
 # .env.local
-VITE_TWILIO_ACCOUNT_SID=xxx
+VITE_TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
 VITE_TWILIO_AUTH_TOKEN=your_auth_token
 VITE_TWILIO_WHATSAPP_FROM=whatsapp:+14155238886
 VITE_TWILIO_WHATSAPP_TO=whatsapp:+xxxx
