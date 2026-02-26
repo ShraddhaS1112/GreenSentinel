@@ -1,0 +1,81 @@
+# ============================================================
+# GreenSentinel Frontend .gitignore  (React + Vite + PWA)
+# ============================================================
+
+# ---------------------------
+# Node / npm
+# ---------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+package-lock.json
+
+# ---------------------------
+# Environment / Secrets  ⚠️  NEVER commit these!
+# ---------------------------
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.*.local
+
+# ---------------------------
+# Build outputs
+# ---------------------------
+dist/
+dist-ssr/
+build/
+
+# ---------------------------
+# AWS Amplify
+# ---------------------------
+amplify/#current-cloud-backend
+amplify/.config/local-*
+amplify/logs
+amplify/mock-data
+amplify/backend/amplify-meta.json
+amplify/backend/.temp
+aws-exports.js
+awsconfiguration.json
+amplifyconfiguration.json
+amplify-build-config.json
+amplify-gradle-config.json
+amplifytools.xcconfig
+.secret-*
+
+# ---------------------------
+# Editor / IDE
+# ---------------------------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ---------------------------
+# OS generated
+# ---------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ---------------------------
+# Misc
+# ---------------------------
+*.pem
+*.log
+.cache/
+coverage/
+.nyc_output/

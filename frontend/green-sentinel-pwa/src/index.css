@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply min-h-screen min-w-80;
+  }
+
+  h1 {
+    @apply text-5xl leading-tight;
+  }
+}
+
+@layer components {
+  a {
+    @apply font-medium text-blue-500 no-underline hover:text-blue-600 transition-colors;
+  }
+
+  button {
+    @apply rounded-lg border border-transparent px-5 py-2.5 text-base font-medium cursor-pointer transition-colors;
+    @apply bg-gray-900 hover:border-blue-500 focus:outline-4 focus:outline-blue-400;
+  }
+
+  @media (prefers-color-scheme: light) {
+    button {
+      @apply bg-gray-100;
+    }
+  }
+}
