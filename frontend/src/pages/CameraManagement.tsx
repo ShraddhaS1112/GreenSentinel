@@ -25,6 +25,7 @@ import { useFarmStore } from '@/stores/farmStore';
 import { CameraStatus } from '@green-sentinel/shared';
 import type { Camera as CameraType } from '@green-sentinel/shared';
 import toast from 'react-hot-toast';
+import LiveCamera from '@/components/LiveCamera';
 
 const statusConfig: Record<
   CameraStatus,
@@ -100,6 +101,28 @@ export default function CameraManagement() {
           <span className="hidden sm:inline">Add Camera</span>
         </button>
       </div>
+
+      {/* Browser Camera - Works on any device */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
+          <Camera className="w-5 h-5 text-green-600" />
+          Quick Scan (Browser Camera)
+        </h2>
+        <LiveCamera
+          farmId={farm.farmId}
+          onThreatDetected={(threat) => {
+            toast.error(`Threat detected: ${threat.threats.map(t => t.type).join(', ')}`, {
+              duration: 5000
+            });
+          }}
+        />
+        <p className="text-sm text-slate-500 mt-2">
+          Use your phone or laptop camera for quick field inspections. No setup required.
+        </p>
+      </div>
+
+      {/* IP Cameras Section */}
+      <h2 className="text-lg font-semibold text-slate-900 mb-3">IP Cameras (RTSP)</h2>
 
       {/* Camera list */}
       {farm.cameras.length === 0 ? (
