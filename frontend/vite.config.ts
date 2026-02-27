@@ -126,4 +126,7 @@ export default defineConfig({
     port: 3000,
     host: true,
   },
+  optimizeDeps: {
+    include: ['leaflet', 'react-leaflet', '@react-leaflet/core'],
+  },
 });
