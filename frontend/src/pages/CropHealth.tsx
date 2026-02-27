@@ -1,10 +1,11 @@
 /**
  * Green Sentinel - Crop Health Page
  *
- * Displays NDVI-based crop health data with heatmaps and trends.
+ * Displays NDVI-based crop health data from satellite imagery with trends.
+ * Fetches real data from AWS backend.
  */
 
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import {
   Leaf,
@@ -14,9 +15,16 @@ import {
   Calendar,
   MapPin,
   Info,
+  RefreshCw,
+  Satellite,
+  AlertTriangle,
+  Map,
 } from 'lucide-react';
 import { useFarmStore } from '@/stores/farmStore';
 import { Line } from 'react-chartjs-2';
+
+// Lazy load the map component
+const SatelliteMap = lazy(() => import('@/components/SatelliteMap'));
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -28,6 +36,7 @@ import {
   Legend,
   Filler,
 } from 'chart.js';
+import * as api from '@/services/apiService';
 
 // Register Chart.js components
 ChartJS.register(
@@ -45,67 +54,100 @@ export default function CropHealth() {
   const { getCurrentFarm } = useFarmStore();
   const farm = getCurrentFarm();
 
-  // Mock health data (in production, fetch from API)
-  const healthData = useMemo(() => {
-    // Generate mock 30-day health score data
-    const data = [];
-    const today = new Date();
-    let score = 70;
+  const [healthData, setHealthData] = useState<api.CropHealthResponse | null>(null);
+  const [satelliteData, setSatelliteData] = useState<api.SatelliteDataResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
-    for (let i = 29; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
+  // Fetch crop health data from API
+  const fetchData = async () => {
+    if (!farm?.farmId) return;
 
-      // Add some variation
-      score += (Math.random() - 0.45) * 5;
-      score = Math.max(40, Math.min(95, score));
+    setLoading(true);
+    setError(null);
 
-      data.push({
-        date: date.toISOString().split('T')[0],
-        score: Math.round(score),
-        ndvi: (score / 50 - 1).toFixed(2),
-      });
+    try {
+      const [healthResponse, satResponse] = await Promise.all([
+        api.getCropHealth(farm.farmId, 30),
+        api.getSatelliteData(farm.farmId, 30),
+      ]);
+
+      if (healthResponse.error) {
+        setError(healthResponse.error);
+      } else {
+        setHealthData(healthResponse.data);
+      }
+
+      if (satResponse.data) {
+        setSatelliteData(satResponse.data);
+      }
+
+      setLastRefresh(new Date());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch data');
+    } finally {
+      setLoading(false);
     }
-
-    return data;
-  }, []);
-
-  const currentScore = healthData[healthData.length - 1]?.score || 0;
-  const previousScore = healthData[healthData.length - 8]?.score || currentScore;
-  const trend =
-    currentScore > previousScore + 3
-      ? 'improving'
-      : currentScore < previousScore - 3
-      ? 'declining'
-      : 'stable';
-
-  // Chart configuration
-  const chartData = {
-    labels: healthData.map((d) => {
-      const date = new Date(d.date);
-      return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-    }),
-    datasets: [
-      {
-        label: 'Health Score',
-        data: healthData.map((d) => d.score),
-        fill: true,
-        borderColor: '#16a34a',
-        backgroundColor: 'rgba(22, 163, 74, 0.1)',
-        tension: 0.4,
-        pointRadius: 0,
-        pointHoverRadius: 6,
-        pointHoverBackgroundColor: '#16a34a',
-      },
-    ],
   };
+
+  useEffect(() => {
+    fetchData();
+  }, [farm?.farmId]);
+
+  // Get current values from API data
+  const currentHealth = healthData?.current;
+  const currentScore = currentHealth?.healthScore || 0;
+  const currentNdvi = currentHealth?.ndvi || 0;
+  const trend = healthData?.trend || 'stable';
+
+  // Calculate week-over-week change
+  const historyItems = healthData?.history || [];
+  const weekAgoScore = historyItems.length > 7 ? historyItems[7]?.healthScore || currentScore : currentScore;
+  const scoreChange = currentScore - weekAgoScore;
+
+  // Chart data from API history
+  const chartData = useMemo(() => {
+    const history = [...(healthData?.history || [])].reverse(); // Oldest first for chart
+
+    return {
+      labels: history.map((d) => {
+        const date = new Date(d.recordDate);
+        return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      }),
+      datasets: [
+        {
+          label: 'Health Score',
+          data: history.map((d) => d.healthScore),
+          fill: true,
+          borderColor: '#16a34a',
+          backgroundColor: 'rgba(22, 163, 74, 0.1)',
+          tension: 0.4,
+          pointRadius: 2,
+          pointHoverRadius: 6,
+          pointHoverBackgroundColor: '#16a34a',
+        },
+        {
+          label: 'NDVI × 100',
+          data: history.map((d) => Math.round(d.ndvi * 100)),
+          fill: false,
+          borderColor: '#3b82f6',
+          borderDash: [5, 5],
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+        },
+      ],
+    };
+  }, [healthData]);
 
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        display: false,
+        display: true,
+        position: 'top' as const,
       },
       tooltip: {
         backgroundColor: '#1e293b',
@@ -113,29 +155,18 @@ export default function CropHealth() {
         bodyColor: '#f8fafc',
         padding: 12,
         cornerRadius: 8,
-        displayColors: false,
       },
     },
     scales: {
       x: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          maxTicksLimit: 7,
-          color: '#94a3b8',
-        },
+        grid: { display: false },
+        ticks: { maxTicksLimit: 7, color: '#94a3b8' },
       },
       y: {
         min: 0,
         max: 100,
-        grid: {
-          color: '#f1f5f9',
-        },
-        ticks: {
-          color: '#94a3b8',
-          stepSize: 25,
-        },
+        grid: { color: '#f1f5f9' },
+        ticks: { color: '#94a3b8', stepSize: 25 },
       },
     },
   };
@@ -156,6 +187,9 @@ export default function CropHealth() {
 
   const category = getScoreCategory(currentScore);
 
+  // Get latest satellite info
+  const latestSatellite = satelliteData?.data?.[0];
+
   if (!farm) {
     return (
       <div className="page-container">
@@ -173,160 +207,269 @@ export default function CropHealth() {
   return (
     <div className="page-container">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Crop Health</h1>
-        <p className="text-slate-500 mt-1 flex items-center gap-1">
-          <MapPin className="w-4 h-4" />
-          {farm.name} • {farm.cropType}
-        </p>
+      <div className="mb-6 flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900">Crop Health</h1>
+          <p className="text-slate-500 mt-1 flex items-center gap-1">
+            <MapPin className="w-4 h-4" />
+            {farm.name} • {farm.cropType}
+          </p>
+        </div>
+        <button
+          onClick={fetchData}
+          disabled={loading}
+          className="btn-secondary flex items-center gap-2"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </button>
       </div>
 
-      {/* Current Score Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card mb-6"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <p className="text-sm text-slate-500 mb-1">Current Health Score</p>
-            <div className="flex items-end gap-3">
-              <span className={`text-5xl font-bold ${getScoreColor(currentScore)}`}>
-                {currentScore}
-              </span>
-              <span className="text-slate-400 text-lg mb-2">/100</span>
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${category.color}`}>
-                {category.label}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 mt-3">
-              {trend === 'improving' ? (
-                <>
-                  <TrendingUp className="w-5 h-5 text-green-500" />
-                  <span className="text-green-600 font-medium">
-                    +{currentScore - previousScore} points this week
-                  </span>
-                </>
-              ) : trend === 'declining' ? (
-                <>
-                  <TrendingDown className="w-5 h-5 text-red-500" />
-                  <span className="text-red-600 font-medium">
-                    {currentScore - previousScore} points this week
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Minus className="w-5 h-5 text-slate-400" />
-                  <span className="text-slate-500 font-medium">Stable this week</span>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Score gauge visualization */}
-          <div className="relative w-32 h-32">
-            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="none"
-                stroke="#f1f5f9"
-                strokeWidth="8"
-              />
-              <circle
-                cx="50"
-                cy="50"
-                r="40"
-                fill="none"
-                stroke={currentScore >= 60 ? '#22c55e' : currentScore >= 40 ? '#eab308' : '#ef4444'}
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={`${currentScore * 2.51} 251`}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <Leaf className={`w-6 h-6 ${getScoreColor(currentScore)}`} />
-              <span className="text-xs text-slate-500 mt-1">NDVI</span>
+      {/* Error state */}
+      {error && (
+        <div className="card mb-6 bg-red-50 border border-red-200">
+          <div className="flex gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <div>
+              <h3 className="font-medium text-red-900">Error loading data</h3>
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           </div>
         </div>
-      </motion.div>
+      )}
+
+      {/* Loading state */}
+      {loading && !healthData && (
+        <div className="card mb-6 flex items-center justify-center py-12">
+          <RefreshCw className="w-8 h-8 animate-spin text-green-600" />
+          <span className="ml-3 text-slate-600">Loading satellite data...</span>
+        </div>
+      )}
+
+      {/* Current Score Card */}
+      {healthData && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card mb-6"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p className="text-sm text-slate-500 mb-1">Current Health Score</p>
+              <div className="flex items-end gap-3">
+                <span className={`text-5xl font-bold ${getScoreColor(currentScore)}`}>
+                  {currentScore}
+                </span>
+                <span className="text-slate-400 text-lg mb-2">/100</span>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${category.color}`}>
+                  {category.label}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 mt-3">
+                {trend === 'improving' || scoreChange > 3 ? (
+                  <>
+                    <TrendingUp className="w-5 h-5 text-green-500" />
+                    <span className="text-green-600 font-medium">
+                      +{Math.abs(scoreChange)} points this week
+                    </span>
+                  </>
+                ) : trend === 'declining' || scoreChange < -3 ? (
+                  <>
+                    <TrendingDown className="w-5 h-5 text-red-500" />
+                    <span className="text-red-600 font-medium">
+                      {scoreChange} points this week
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <Minus className="w-5 h-5 text-slate-400" />
+                    <span className="text-slate-500 font-medium">Stable this week</span>
+                  </>
+                )}
+              </div>
+
+              {/* NDVI Value */}
+              <div className="mt-4 flex items-center gap-4 text-sm">
+                <div>
+                  <span className="text-slate-500">NDVI:</span>
+                  <span className="ml-2 font-semibold text-slate-700">{currentNdvi.toFixed(3)}</span>
+                </div>
+                {healthData.averageNdvi && (
+                  <div>
+                    <span className="text-slate-500">30-day avg:</span>
+                    <span className="ml-2 font-semibold text-slate-700">
+                      {healthData.averageNdvi.toFixed(3)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Score gauge visualization */}
+            <div className="relative w-32 h-32">
+              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke="#f1f5f9"
+                  strokeWidth="8"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="40"
+                  fill="none"
+                  stroke={currentScore >= 60 ? '#22c55e' : currentScore >= 40 ? '#eab308' : '#ef4444'}
+                  strokeWidth="8"
+                  strokeLinecap="round"
+                  strokeDasharray={`${currentScore * 2.51} 251`}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <Leaf className={`w-6 h-6 ${getScoreColor(currentScore)}`} />
+                <span className="text-xs text-slate-500 mt-1">NDVI</span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Health Trend Chart */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="card mb-6"
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="section-header mb-0 flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-slate-400" />
-            30-Day Health Trend
+      {healthData && healthData.history.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="card mb-6"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="section-header mb-0 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-slate-400" />
+              {healthData.count}-Day Health Trend
+            </h2>
+          </div>
+
+          <div className="chart-container">
+            <Line data={chartData} options={chartOptions} />
+          </div>
+        </motion.div>
+      )}
+
+      {/* Satellite Data Info */}
+      {latestSatellite && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="card mb-6"
+        >
+          <h2 className="section-header flex items-center gap-2">
+            <Satellite className="w-5 h-5 text-slate-400" />
+            Latest Satellite Data
           </h2>
-        </div>
 
-        <div className="chart-container">
-          <Line data={chartData} options={chartOptions} />
-        </div>
-      </motion.div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="text-xs text-slate-500">Capture Date</p>
+              <p className="font-semibold text-slate-700">
+                {new Date(latestSatellite.captureDate).toLocaleDateString('en-IN', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+              </p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="text-xs text-slate-500">NDVI Index</p>
+              <p className="font-semibold text-green-600">{latestSatellite.ndvi.toFixed(3)}</p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="text-xs text-slate-500">NDWI (Water)</p>
+              <p className="font-semibold text-blue-600">{latestSatellite.ndwi.toFixed(3)}</p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="text-xs text-slate-500">Cloud Cover</p>
+              <p className="font-semibold text-slate-700">{latestSatellite.cloudCover}%</p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="text-xs text-slate-500">LAI (Leaf Area)</p>
+              <p className="font-semibold text-slate-700">{latestSatellite.lai.toFixed(2)}</p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-lg">
+              <p className="text-xs text-slate-500">Data Source</p>
+              <p className="font-semibold text-slate-700 capitalize">{latestSatellite.source}</p>
+            </div>
+            <div className="p-3 bg-slate-50 rounded-lg col-span-2">
+              <p className="text-xs text-slate-500">Health Status</p>
+              <p className={`font-semibold capitalize ${getScoreColor(latestSatellite.healthScore)}`}>
+                {latestSatellite.healthStatus} ({latestSatellite.healthScore}/100)
+              </p>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
-      {/* NDVI Heatmap placeholder */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="card mb-6"
-      >
-        <h2 className="section-header flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-slate-400" />
-          NDVI Heatmap
-        </h2>
+      {/* Satellite Map View */}
+      {farm?.location?.latitude && farm?.location?.longitude && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.22 }}
+          className="card mb-6"
+        >
+          <h2 className="section-header flex items-center gap-2">
+            <Map className="w-5 h-5 text-slate-400" />
+            Satellite View of Your Farm
+          </h2>
+          <Suspense
+            fallback={
+              <div className="h-[400px] bg-slate-100 rounded-lg flex items-center justify-center">
+                <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
+                <span className="ml-2 text-slate-500">Loading map...</span>
+              </div>
+            }
+          >
+            <SatelliteMap
+              latitude={farm.location.latitude}
+              longitude={farm.location.longitude}
+              farmName={farm.name}
+              bbox={latestSatellite?.bbox as number[] | undefined}
+              ndvi={latestSatellite?.ndvi}
+              healthStatus={latestSatellite?.healthStatus}
+            />
+          </Suspense>
+          <p className="text-xs text-slate-500 mt-3 text-center">
+            Use layer buttons to switch between satellite, terrain, and street views.
+            Click "NDVI View" for detailed vegetation analysis.
+          </p>
+        </motion.div>
+      )}
 
-        <div className="aspect-video bg-gradient-to-br from-red-200 via-yellow-200 to-green-300 rounded-lg flex items-center justify-center relative overflow-hidden">
-          {/* Mock heatmap visualization */}
-          <div className="absolute inset-0 opacity-50">
-            {Array.from({ length: 20 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute rounded-full"
-                style={{
-                  width: `${20 + Math.random() * 60}px`,
-                  height: `${20 + Math.random() * 60}px`,
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  backgroundColor: ['#22c55e', '#84cc16', '#eab308', '#f97316'][
-                    Math.floor(Math.random() * 4)
-                  ],
-                  opacity: 0.3 + Math.random() * 0.5,
-                }}
-              />
+      {/* Recommendations */}
+      {currentHealth?.recommendations && currentHealth.recommendations.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="card mb-6"
+        >
+          <h2 className="section-header flex items-center gap-2">
+            <Leaf className="w-5 h-5 text-slate-400" />
+            Recommendations
+          </h2>
+          <ul className="space-y-2">
+            {currentHealth.recommendations.map((rec, idx) => (
+              <li key={idx} className="flex items-start gap-2">
+                <span className="text-green-500 mt-1">•</span>
+                <span className="text-slate-700">{rec}</span>
+              </li>
             ))}
-          </div>
-
-          <div className="bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg text-sm text-slate-600 z-10">
-            Satellite imagery updated daily
-          </div>
-        </div>
-
-        {/* Legend */}
-        <div className="flex items-center justify-center gap-6 mt-4">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-red-400" />
-            <span className="text-sm text-slate-600">Poor (&lt;0.3)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-yellow-400" />
-            <span className="text-sm text-slate-600">Moderate (0.3-0.6)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-green-400" />
-            <span className="text-sm text-slate-600">Excellent (&gt;0.6)</span>
-          </div>
-        </div>
-      </motion.div>
+          </ul>
+        </motion.div>
+      )}
 
       {/* Info card */}
       <motion.div
@@ -341,10 +484,16 @@ export default function CropHealth() {
             <h3 className="font-medium text-blue-900">About NDVI Health Score</h3>
             <p className="text-sm text-blue-700 mt-1">
               The health score is calculated from Normalized Difference Vegetation Index
-              (NDVI) satellite data. NDVI measures vegetation health using near-infrared
-              and visible light reflectance. Scores above 60 indicate healthy crops,
-              while scores below 40 may require intervention.
+              (NDVI) using Sentinel-2 satellite imagery. NDVI measures vegetation health
+              using near-infrared and visible light reflectance. Scores above 60 indicate
+              healthy crops, while scores below 40 may require intervention. Data is
+              updated daily at 6 AM IST.
             </p>
+            {lastRefresh && (
+              <p className="text-xs text-blue-600 mt-2">
+                Last updated: {lastRefresh.toLocaleString('en-IN')}
+              </p>
+            )}
           </div>
         </div>
       </motion.div>

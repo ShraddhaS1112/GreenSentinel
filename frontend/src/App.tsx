@@ -17,6 +17,7 @@ const Login = lazy(() => import('@/pages/Login'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const Weather = lazy(() => import('@/pages/Weather'));
 const IrrigationPlanner = lazy(() => import('@/pages/IrrigationPlanner'));
+const DiseaseScanner = lazy(() => import('@/pages/DiseaseScanner'));
 
 // Hooks
 import { useAuthStore } from '@/stores/authStore';
@@ -69,6 +70,7 @@ function App() {
             <Route path="health" element={<CropHealth />} />
             <Route path="weather" element={<Weather />} />
             <Route path="irrigation" element={<IrrigationPlanner />} />
+            <Route path="scanner" element={<DiseaseScanner />} />
             <Route path="farms" element={<FarmManagement />} />
             <Route path="farms/:farmId/cameras" element={<CameraManagement />} />
             <Route path="settings" element={<Settings />} />
