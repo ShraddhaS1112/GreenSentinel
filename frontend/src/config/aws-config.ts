@@ -1,27 +1,49 @@
 /**
  * AWS Configuration for Green Sentinel
  *
- * Configure AWS Amplify with Cognito for authentication
+ * Configure AWS Amplify with Cognito for phone+OTP authentication
  */
 
 import { Amplify } from 'aws-amplify';
+import { useAuthStore } from '@/stores/authStore';
 
 // Environment variables (set in .env file)
+const cognitoConfig = {
+  userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID || '',
+  userPoolClientId: import.meta.env.VITE_COGNITO_CLIENT_ID || '',
+};
+
 const awsConfig = {
   Auth: {
     Cognito: {
-      userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID || 'ap-south-1_jqEgqYrkW',
-      userPoolClientId: import.meta.env.VITE_COGNITO_CLIENT_ID || '5n1a7uvq0i8epu1g3rhgj1uek4',
+      userPoolId: cognitoConfig.userPoolId,
+      userPoolClientId: cognitoConfig.userPoolClientId,
       loginWith: {
         phone: true,
-        email: true,
       },
     },
   },
 };
 
 export function configureAWS() {
-  Amplify.configure(awsConfig);
+  const hasConfig = cognitoConfig.userPoolId && cognitoConfig.userPoolClientId;
+
+  if (hasConfig) {
+    try {
+      Amplify.configure(awsConfig);
+      useAuthStore.getState().setCognitoConfigured(true);
+      console.log('AWS Cognito configured:', cognitoConfig.userPoolId);
+
+      // Check if user is already signed in
+      useAuthStore.getState().checkAuthState();
+    } catch (err) {
+      console.error('Failed to configure Amplify:', err);
+      useAuthStore.getState().setCognitoConfigured(false);
+    }
+  } else {
+    console.warn('Cognito not configured - running in demo mode');
+    useAuthStore.getState().setCognitoConfigured(false);
+  }
 }
 
 export default awsConfig;

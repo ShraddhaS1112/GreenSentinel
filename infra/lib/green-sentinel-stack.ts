@@ -141,16 +141,184 @@ export class GreenSentinelStack extends cdk.Stack {
     });
 
     // =========================================================================
-    // Cognito User Pool
+    // Cognito User Pool with Phone+OTP Authentication
     // =========================================================================
 
-    // User Pool for authentication
+    // IAM Role for Cognito to send SMS via SNS
+    const cognitoSmsRole = new iam.Role(this, 'CognitoSmsRole', {
+      roleName: `${prefix}-cognito-sms-role`,
+      assumedBy: new iam.ServicePrincipal('cognito-idp.amazonaws.com'),
+      inlinePolicies: {
+        'sns-publish': new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              actions: ['sns:Publish'],
+              resources: ['*'],
+            }),
+          ],
+        }),
+      },
+    });
+
+    // Lambda for Custom Auth - Define Auth Challenge
+    const defineAuthChallenge = new lambda.Function(this, 'DefineAuthChallenge', {
+      functionName: `${prefix}-define-auth-challenge`,
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline(`
+        exports.handler = async (event) => {
+          console.log('DefineAuthChallenge:', JSON.stringify(event, null, 2));
+
+          const session = event.request.session || [];
+
+          if (session.length === 0) {
+            // First step: issue custom challenge (OTP)
+            event.response.issueTokens = false;
+            event.response.failAuthentication = false;
+            event.response.challengeName = 'CUSTOM_CHALLENGE';
+          } else if (session.length === 1 && session[0].challengeName === 'CUSTOM_CHALLENGE') {
+            // OTP was verified
+            if (session[0].challengeResult === true) {
+              event.response.issueTokens = true;
+              event.response.failAuthentication = false;
+            } else {
+              // Wrong OTP, allow retry
+              event.response.issueTokens = false;
+              event.response.failAuthentication = false;
+              event.response.challengeName = 'CUSTOM_CHALLENGE';
+            }
+          } else if (session.length >= 3) {
+            // Too many attempts
+            event.response.issueTokens = false;
+            event.response.failAuthentication = true;
+          } else {
+            // Continue with custom challenge
+            event.response.issueTokens = false;
+            event.response.failAuthentication = false;
+            event.response.challengeName = 'CUSTOM_CHALLENGE';
+          }
+
+          return event;
+        };
+      `),
+      timeout: cdk.Duration.seconds(10),
+    });
+
+    // Lambda for Custom Auth - Create Auth Challenge (Generate & Send OTP)
+    const createAuthChallenge = new lambda.Function(this, 'CreateAuthChallenge', {
+      functionName: `${prefix}-create-auth-challenge`,
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline(`
+        const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
+        const snsClient = new SNSClient({});
+
+        exports.handler = async (event) => {
+          console.log('CreateAuthChallenge:', JSON.stringify(event, null, 2));
+
+          if (event.request.challengeName === 'CUSTOM_CHALLENGE') {
+            // Generate 6-digit OTP
+            const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+            // Get phone number from user attributes
+            const phoneNumber = event.request.userAttributes.phone_number;
+
+            if (phoneNumber) {
+              try {
+                // Send OTP via SNS
+                await snsClient.send(new PublishCommand({
+                  PhoneNumber: phoneNumber,
+                  Message: 'Your Green Sentinel OTP is: ' + otp + '. Valid for 5 minutes.',
+                  MessageAttributes: {
+                    'AWS.SNS.SMS.SenderID': {
+                      DataType: 'String',
+                      StringValue: 'GreenSentl'
+                    },
+                    'AWS.SNS.SMS.SMSType': {
+                      DataType: 'String',
+                      StringValue: 'Transactional'
+                    }
+                  }
+                }));
+                console.log('OTP sent to', phoneNumber);
+              } catch (err) {
+                console.error('Failed to send SMS:', err);
+                // In dev/test, continue anyway
+              }
+            }
+
+            // Store OTP in privateChallengeParameters (not sent to client)
+            event.response.privateChallengeParameters = { otp };
+
+            // Send challenge metadata to client
+            event.response.publicChallengeParameters = {
+              phone: phoneNumber ? phoneNumber.slice(-4) : '****'
+            };
+
+            event.response.challengeMetadata = 'OTP_CHALLENGE';
+          }
+
+          return event;
+        };
+      `),
+      timeout: cdk.Duration.seconds(30),
+    });
+
+    // Grant SNS publish permission
+    createAuthChallenge.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['sns:Publish'],
+      resources: ['*'],
+    }));
+
+    // Lambda for Custom Auth - Verify Auth Challenge (Check OTP)
+    const verifyAuthChallenge = new lambda.Function(this, 'VerifyAuthChallenge', {
+      functionName: `${prefix}-verify-auth-challenge`,
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline(`
+        exports.handler = async (event) => {
+          console.log('VerifyAuthChallenge:', JSON.stringify(event, null, 2));
+
+          const expectedOtp = event.request.privateChallengeParameters?.otp;
+          const providedOtp = event.request.challengeAnswer;
+
+          // Compare OTPs
+          event.response.answerCorrect = (expectedOtp === providedOtp);
+
+          console.log('OTP verification:', event.response.answerCorrect ? 'SUCCESS' : 'FAILED');
+
+          return event;
+        };
+      `),
+      timeout: cdk.Duration.seconds(10),
+    });
+
+    // Lambda for Pre Sign-up - Auto confirm users
+    const preSignUp = new lambda.Function(this, 'PreSignUp', {
+      functionName: `${prefix}-pre-signup`,
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline(`
+        exports.handler = async (event) => {
+          console.log('PreSignUp:', JSON.stringify(event, null, 2));
+
+          // Auto-confirm user and verify phone number
+          event.response.autoConfirmUser = true;
+          event.response.autoVerifyPhone = true;
+
+          return event;
+        };
+      `),
+      timeout: cdk.Duration.seconds(10),
+    });
+
+    // User Pool for authentication (keep existing email+phone aliases)
     const userPool = new cognito.UserPool(this, 'UserPool', {
       userPoolName: `${prefix}-users`,
       selfSignUpEnabled: true,
       signInAliases: {
         phone: true,
-        email: true,
+        email: true, // Keep email to avoid breaking existing UserPool
       },
       autoVerify: {
         phone: true,
@@ -164,6 +332,7 @@ export class GreenSentinelStack extends cdk.Stack {
         preferredLanguage: new cognito.StringAttribute({ mutable: true }),
         farmIds: new cognito.StringAttribute({ mutable: true }),
       },
+      // Minimal password policy (users won't use passwords - OTP only)
       passwordPolicy: {
         minLength: 8,
         requireLowercase: true,
@@ -173,24 +342,28 @@ export class GreenSentinelStack extends cdk.Stack {
       },
       accountRecovery: cognito.AccountRecovery.PHONE_ONLY_WITHOUT_MFA,
       removalPolicy: stage === 'dev' ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
+      // SMS configuration
+      smsRole: cognitoSmsRole,
+      smsRoleExternalId: `${prefix}-cognito-sms`,
+      // Lambda triggers for custom auth
+      lambdaTriggers: {
+        defineAuthChallenge,
+        createAuthChallenge,
+        verifyAuthChallengeResponse: verifyAuthChallenge,
+        preSignUp,
+      },
     });
 
-    // User Pool Client (for frontend)
+    // User Pool Client (for frontend) - Enable Custom Auth
     const userPoolClient = new cognito.UserPoolClient(this, 'UserPoolClient', {
       userPool,
       userPoolClientName: `${prefix}-web-client`,
       authFlows: {
-        userPassword: true,
-        userSrp: true,
-        custom: true,
-      },
-      oAuth: {
-        flows: { implicitCodeGrant: true },
-        scopes: [cognito.OAuthScope.OPENID, cognito.OAuthScope.PROFILE, cognito.OAuthScope.PHONE],
-        callbackUrls: ['http://localhost:3000/', 'https://green-sentinel.app/'],
-        logoutUrls: ['http://localhost:3000/login', 'https://green-sentinel.app/login'],
+        custom: true,  // Required for OTP flow
+        userSrp: true, // Fallback
       },
       preventUserExistenceErrors: true,
+      // No OAuth needed for mobile app
     });
 
     // =========================================================================
@@ -1326,7 +1499,7 @@ export class GreenSentinelStack extends cdk.Stack {
               const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
               const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
 
-              // Disable checksum calculation for presigned URLs (fixes browser upload 403 errors)
+              // Disable ALL checksum calculation for presigned URLs (fixes browser upload 403 errors)
               const s3Client = new S3Client({
                 requestChecksumCalculation: 'WHEN_REQUIRED',
                 responseChecksumValidation: 'WHEN_REQUIRED'
@@ -1343,16 +1516,19 @@ export class GreenSentinelStack extends cdk.Stack {
                 const scanId = 'scan_' + Date.now();
                 const key = 'disease-scans/' + farmId + '/' + scanId + '.jpg';
 
+                // Create command WITHOUT any checksum settings
                 const command = new PutObjectCommand({
                   Bucket: process.env.SATELLITE_BUCKET,
                   Key: key,
-                  ContentType: 'image/jpeg'
+                  ContentType: 'image/jpeg',
+                  ChecksumAlgorithm: undefined // Explicitly disable checksum
                 });
 
-                // Generate presigned URL without checksum headers
+                // Generate presigned URL - exclude all checksum headers
                 const uploadUrl = await getSignedUrl(s3Client, command, {
                   expiresIn: 300,
-                  unhoistableHeaders: new Set(['x-amz-checksum-crc32'])
+                  unhoistableHeaders: new Set(['x-amz-checksum-crc32', 'x-amz-sdk-checksum-algorithm']),
+                  signableHeaders: new Set(['host', 'content-type'])
                 });
 
                 return { statusCode: 200, headers, body: JSON.stringify({
