@@ -12,6 +12,8 @@ import {
   Settings,
   X,
   Shield,
+  Cloud,
+  Droplets,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useFarmStore } from '@/stores/farmStore';
@@ -25,6 +27,8 @@ const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/threats', label: 'Threat History', icon: AlertTriangle },
   { path: '/health', label: 'Crop Health', icon: Leaf },
+  { path: '/weather', label: 'Weather', icon: Cloud },
+  { path: '/irrigation', label: 'Irrigation', icon: Droplets },
   { path: '/farms', label: 'Farm Management', icon: Building2 },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];

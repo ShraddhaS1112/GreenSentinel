@@ -15,6 +15,8 @@ const CameraManagement = lazy(() => import('@/pages/CameraManagement'));
 const Settings = lazy(() => import('@/pages/Settings'));
 const Login = lazy(() => import('@/pages/Login'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
+const Weather = lazy(() => import('@/pages/Weather'));
+const IrrigationPlanner = lazy(() => import('@/pages/IrrigationPlanner'));
 
 // Hooks
 import { useAuthStore } from '@/stores/authStore';
@@ -65,6 +67,8 @@ function App() {
             <Route index element={<Dashboard />} />
             <Route path="threats" element={<ThreatHistory />} />
             <Route path="health" element={<CropHealth />} />
+            <Route path="weather" element={<Weather />} />
+            <Route path="irrigation" element={<IrrigationPlanner />} />
             <Route path="farms" element={<FarmManagement />} />
             <Route path="farms/:farmId/cameras" element={<CameraManagement />} />
             <Route path="settings" element={<Settings />} />

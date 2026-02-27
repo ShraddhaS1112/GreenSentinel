@@ -24,6 +24,7 @@
     "@aws-sdk/lib-dynamodb": "^3.500.0",
     "@aws-sdk/s3-request-presigner": "^3.500.0",
     "@green-sentinel/shared": "*",
+    "geotiff": "^2.1.3",
     "jsonwebtoken": "^9.0.2",
     "node-rtsp-stream": "^0.0.9",
     "sharp": "^0.33.2",
