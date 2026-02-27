@@ -13,14 +13,25 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 import BottomNav from './BottomNav';
 import SimpleBottomNav from './SimpleBottomNav';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePreferencesStore } from '@/stores/preferencesStore';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useFarmStore } from '@/stores/farmStore';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { uiMode } = usePreferencesStore();
   const isMobile = useIsMobile();
+  const { fetchFarms } = useFarmStore();
+  const { user } = useAuthStore();
+
+  // Fetch farms when user is authenticated
+  useEffect(() => {
+    if (user?.userId) {
+      fetchFarms(user.userId);
+    }
+  }, [user?.userId, fetchFarms]);
 
   // Simple Mode: Only on mobile phones when user preference is 'simple'
   const showSimpleMode = isMobile && uiMode === 'simple';

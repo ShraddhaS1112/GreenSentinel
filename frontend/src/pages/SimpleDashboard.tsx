@@ -6,6 +6,7 @@
  * - Minimal text, maximum visual clarity
  * - Large touch-friendly buttons
  * - Voice announcements in local language
+ * - Actionable advice instead of technical metrics
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -14,17 +15,18 @@ import { motion } from 'framer-motion';
 import {
   Leaf,
   AlertTriangle,
-  Droplets,
-  Camera,
-  Phone,
   Volume2,
   RefreshCw,
   CheckCircle,
   XCircle,
+  ArrowRight,
+  Sun,
+  CloudRain,
 } from 'lucide-react';
 import { useFarmStore } from '@/stores/farmStore';
-import { usePreferencesStore, useTranslation } from '@/stores/preferencesStore';
+import { usePreferencesStore } from '@/stores/preferencesStore';
 import * as api from '@/services/apiService';
+import { getHealthAdvice, getActionCards, getNdviExplanation } from '@/utils/farmerFriendly';
 
 // =============================================================================
 // VOICE SYNTHESIS
@@ -51,11 +53,11 @@ const speakMessage = (message: string, language: string) => {
 export default function SimpleDashboard() {
   const { getCurrentFarm } = useFarmStore();
   const { voiceGuidance, language } = usePreferencesStore();
-  const { t } = useTranslation();
   const farm = getCurrentFarm();
 
   const [cropHealth, setCropHealth] = useState<api.CropHealthResponse | null>(null);
   const [alerts, setAlerts] = useState<api.Alert[]>([]);
+  const [forecast, setForecast] = useState<api.ForecastResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [speaking, setSpeaking] = useState(false);
 
@@ -64,12 +66,14 @@ export default function SimpleDashboard() {
     if (!farm?.farmId) return;
     setLoading(true);
     try {
-      const [healthRes, alertsRes] = await Promise.all([
+      const [healthRes, alertsRes, forecastRes] = await Promise.all([
         api.getCropHealth(farm.farmId, 7),
         api.getAlerts(farm.farmId),
+        api.getForecast(farm.farmId),
       ]);
       setCropHealth(healthRes.data);
       setAlerts(alertsRes.data || []);
+      setForecast(forecastRes.data);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
     } finally {
@@ -85,11 +89,22 @@ export default function SimpleDashboard() {
 
   // Health calculation
   const healthScore = cropHealth?.current?.healthScore || 0;
+  const ndvi = cropHealth?.current?.ndvi || 0;
   const healthStatus = useMemo(() => {
     if (healthScore >= 60) return 'good';
     if (healthScore >= 40) return 'warning';
     return 'danger';
   }, [healthScore]);
+
+  // Get farmer-friendly advice
+  const healthAdvice = useMemo(() => {
+    return getHealthAdvice(healthScore, language);
+  }, [healthScore, language]);
+
+  // NDVI explanation in simple terms
+  const ndviExplanation = useMemo(() => {
+    return getNdviExplanation(ndvi, language);
+  }, [ndvi, language]);
 
   // Alert count
   const alertCount = useMemo(() => {
@@ -97,16 +112,22 @@ export default function SimpleDashboard() {
     return alerts.filter(a => new Date(a.alertTimestamp).getTime() > dayAgo).length;
   }, [alerts]);
 
-  // Voice announcement
+  // Soil moisture estimate (use satellite data if available)
+  const soilMoisture = cropHealth?.current?.ndvi ? Math.round(cropHealth.current.ndvi * 100) : 50;
+
+  // Action cards based on current situation
+  const actionCards = useMemo(() => {
+    return getActionCards(healthScore, alertCount, soilMoisture, language);
+  }, [healthScore, alertCount, soilMoisture, language]);
+
+  // Voice announcement - now uses farmer-friendly advice
   const announce = useCallback(() => {
     if (!voiceGuidance) return;
     setSpeaking(true);
-    const msg = healthStatus === 'good'
-      ? t('voice.cropHealthy')
-      : t('voice.needsWater');
+    const msg = `${healthAdvice.title}. ${healthAdvice.message}`;
     speakMessage(msg, language);
     setTimeout(() => setSpeaking(false), 4000);
-  }, [voiceGuidance, healthStatus, t, language]);
+  }, [voiceGuidance, healthAdvice, language]);
 
   // No farm selected
   if (!farm) {
@@ -153,11 +174,11 @@ export default function SimpleDashboard() {
         </div>
       </div>
 
-      {/* MAIN HEALTH INDICATOR - Traffic Light Style */}
+      {/* MAIN HEALTH INDICATOR - Actionable Advice Card */}
       <motion.div
         initial={{ scale: 0.95, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className={`rounded-3xl p-8 mb-6 text-center shadow-lg ${
+        className={`rounded-3xl p-6 mb-6 shadow-lg ${
           healthStatus === 'good'
             ? 'bg-gradient-to-br from-green-400 to-green-600'
             : healthStatus === 'warning'
@@ -166,30 +187,63 @@ export default function SimpleDashboard() {
         }`}
       >
         {/* Status Icon */}
-        <div className="mb-4">
+        <div className="flex items-center justify-center mb-3">
           {healthStatus === 'good' ? (
-            <CheckCircle className="w-24 h-24 mx-auto text-white drop-shadow-lg" />
+            <CheckCircle className="w-20 h-20 text-white drop-shadow-lg" />
           ) : healthStatus === 'warning' ? (
-            <AlertTriangle className="w-24 h-24 mx-auto text-white drop-shadow-lg" />
+            <AlertTriangle className="w-20 h-20 text-white drop-shadow-lg" />
           ) : (
-            <XCircle className="w-24 h-24 mx-auto text-white drop-shadow-lg" />
+            <XCircle className="w-20 h-20 text-white drop-shadow-lg" />
           )}
         </div>
 
-        {/* Status Text */}
-        <h2 className="text-3xl font-bold text-white mb-2">
-          {healthStatus === 'good'
-            ? (language === 'hi' ? 'फसल अच्छी है' : language === 'kn' ? 'ಬೆಳೆ ಚೆನ್ನಾಗಿದೆ' : 'Crops Healthy')
-            : healthStatus === 'warning'
-            ? (language === 'hi' ? 'ध्यान दें' : language === 'kn' ? 'ಗಮನಿಸಿ' : 'Needs Attention')
-            : (language === 'hi' ? 'खतरा!' : language === 'kn' ? 'ಅಪಾಯ!' : 'Danger!')}
+        {/* Farmer-Friendly Title */}
+        <h2 className="text-2xl font-bold text-white text-center mb-2">
+          {healthAdvice.title}
         </h2>
 
-        {/* Score */}
-        <p className="text-white/90 text-lg">
-          {language === 'hi' ? 'स्वास्थ्य स्कोर' : 'Health Score'}: <span className="font-bold text-2xl">{healthScore}</span>/100
+        {/* Simple Message */}
+        <p className="text-white/90 text-center text-lg mb-3">
+          {healthAdvice.message}
+        </p>
+
+        {/* Recommended Action */}
+        {healthAdvice.action && (
+          <div className="bg-white/20 rounded-xl p-3 text-center">
+            <p className="text-white font-semibold flex items-center justify-center gap-2">
+              <ArrowRight className="w-5 h-5" />
+              {healthAdvice.action}
+            </p>
+          </div>
+        )}
+
+        {/* Plant greenness explanation */}
+        <p className="text-white/80 text-sm text-center mt-3">
+          {ndviExplanation}
         </p>
       </motion.div>
+
+      {/* Weather Quick Info */}
+      {forecast?.latest?.weather && (
+        <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-slate-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {forecast.latest.weather.precipitation > 0 ? (
+              <CloudRain className="w-8 h-8 text-blue-500" />
+            ) : (
+              <Sun className="w-8 h-8 text-yellow-500" />
+            )}
+            <div>
+              <p className="font-semibold text-slate-800">{Math.round(forecast.latest.weather.temp)}°C</p>
+              <p className="text-sm text-slate-500">
+                {language === 'hi' ? 'आज का मौसम' : 'Today\'s Weather'}
+              </p>
+            </div>
+          </div>
+          <Link to="/weather" className="text-green-600 text-sm font-medium">
+            {language === 'hi' ? 'विवरण' : 'Details'} →
+          </Link>
+        </div>
+      )}
 
       {/* Alert Banner (only if alerts exist) */}
       {alertCount > 0 && (
@@ -213,75 +267,75 @@ export default function SimpleDashboard() {
         </Link>
       )}
 
-      {/* Action Buttons - Large & Simple */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Scan Disease */}
-        <Link to="/scanner">
-          <motion.div
-            whileTap={{ scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 shadow-md border-2 border-green-200 hover:border-green-400 transition-colors"
-          >
-            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Camera className="w-8 h-8 text-green-600" />
-            </div>
-            <p className="text-center font-semibold text-slate-700">
-              {language === 'hi' ? 'फोटो लें' : language === 'kn' ? 'ಫೋಟೋ ತೆಗೆಯಿರಿ' : 'Take Photo'}
-            </p>
-          </motion.div>
-        </Link>
+      {/* Action Cards - Situation-Aware */}
+      <div className="grid grid-cols-2 gap-3">
+        {actionCards.map((card, index) => {
+          const isExternal = card.link.startsWith('tel:');
+          const CardWrapper = isExternal ? 'a' : Link;
+          const linkProps = isExternal ? { href: card.link } : { to: card.link };
 
-        {/* Irrigation */}
-        <Link to="/irrigation">
-          <motion.div
-            whileTap={{ scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 shadow-md border-2 border-blue-200 hover:border-blue-400 transition-colors"
-          >
-            <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Droplets className="w-8 h-8 text-blue-600" />
-            </div>
-            <p className="text-center font-semibold text-slate-700">
-              {language === 'hi' ? 'सिंचाई' : language === 'kn' ? 'ನೀರಾವರಿ' : 'Irrigation'}
-            </p>
-          </motion.div>
-        </Link>
-
-        {/* View Details */}
-        <Link to="/health">
-          <motion.div
-            whileTap={{ scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 shadow-md border-2 border-purple-200 hover:border-purple-400 transition-colors"
-          >
-            <div className="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Leaf className="w-8 h-8 text-purple-600" />
-            </div>
-            <p className="text-center font-semibold text-slate-700">
-              {language === 'hi' ? 'विवरण' : language === 'kn' ? 'ವಿವರಗಳು' : 'Details'}
-            </p>
-          </motion.div>
-        </Link>
-
-        {/* Call Expert */}
-        <a href="tel:1800-180-1551">
-          <motion.div
-            whileTap={{ scale: 0.95 }}
-            className="bg-white rounded-2xl p-6 shadow-md border-2 border-orange-200 hover:border-orange-400 transition-colors"
-          >
-            <div className="w-14 h-14 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <Phone className="w-8 h-8 text-orange-600" />
-            </div>
-            <p className="text-center font-semibold text-slate-700">
-              {language === 'hi' ? 'मदद' : language === 'kn' ? 'ಸಹಾಯ' : 'Get Help'}
-            </p>
-          </motion.div>
-        </a>
+          return (
+            <CardWrapper key={card.id} {...linkProps as any}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileTap={{ scale: 0.95 }}
+                className={`rounded-2xl p-5 shadow-md border-2 ${card.bgColor} ${
+                  card.urgent ? 'ring-2 ring-offset-2 ring-red-400' : ''
+                } transition-all hover:shadow-lg`}
+              >
+                <div className="text-center">
+                  <span className="text-4xl mb-2 block">{card.icon}</span>
+                  <p className={`font-bold text-lg ${card.color}`}>{card.title}</p>
+                  <p className="text-slate-500 text-sm mt-1">{card.subtitle}</p>
+                </div>
+                {card.urgent && (
+                  <div className="mt-2 text-center">
+                    <span className="inline-block bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                      {language === 'hi' ? 'तुरंत!' : 'Urgent!'}
+                    </span>
+                  </div>
+                )}
+              </motion.div>
+            </CardWrapper>
+          );
+        })}
       </div>
 
-      {/* Tip */}
-      <p className="text-center text-slate-400 text-sm mt-8">
-        {language === 'hi'
-          ? '💡 टिप: रोज़ फसल की जांच करें'
-          : '💡 Tip: Check crops daily'}
-      </p>
+      {/* Quick Health Details Link */}
+      <Link to="/health">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          className="mt-4 p-4 bg-slate-100 rounded-xl flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <Leaf className="w-6 h-6 text-green-600" />
+            <div>
+              <p className="font-medium text-slate-700">
+                {language === 'hi' ? 'विस्तृत जानकारी देखें' : 'View Detailed Report'}
+              </p>
+              <p className="text-sm text-slate-500">
+                {language === 'hi' ? 'उपग्रह डेटा और चार्ट' : 'Satellite data & charts'}
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 text-slate-400" />
+        </motion.div>
+      </Link>
+
+      {/* Helpful Tips */}
+      <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+        <p className="text-sm text-blue-800 text-center font-medium">
+          💡 {language === 'hi'
+            ? 'टिप: रोज़ सुबह फसल की जांच करें। समस्या जल्दी पकड़ने से नुकसान कम होता है।'
+            : language === 'kn'
+            ? 'ಸಲಹೆ: ಪ್ರತಿದಿನ ಬೆಳಿಗ್ಗೆ ಬೆಳೆ ಪರಿಶೀಲಿಸಿ.'
+            : 'Tip: Check crops every morning. Catching problems early reduces damage.'}
+        </p>
+      </div>
     </div>
   );
 }

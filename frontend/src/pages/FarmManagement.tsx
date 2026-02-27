@@ -16,6 +16,7 @@ import {
   Edit,
 } from 'lucide-react';
 import { useFarmStore } from '@/stores/farmStore';
+import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
 export default function FarmManagement() {
@@ -159,6 +160,7 @@ export default function FarmManagement() {
 
 function AddFarmModal({ onClose }: { onClose: () => void }) {
   const { addFarm } = useFarmStore();
+  const { user } = useAuthStore();
   const [formData, setFormData] = useState({
     name: '',
     latitude: '',
@@ -175,7 +177,7 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
 
     const newFarm = {
       farmId: `farm_${Date.now()}`,
-      userId: 'user_demo_001',
+      userId: user?.userId || 'demo-user',
       name: formData.name,
       location: {
         latitude: parseFloat(formData.latitude) || 18.5204,

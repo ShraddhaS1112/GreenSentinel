@@ -23,6 +23,9 @@ import {
 } from 'lucide-react';
 import { useFarmStore } from '@/stores/farmStore';
 import * as api from '@/services/apiService';
+import { ExplainedLabel } from '@/components/common/InfoTooltip';
+import { getHealthAdvice, getNdviExplanation } from '@/utils/farmerFriendly';
+import { usePreferencesStore } from '@/stores/preferencesStore';
 
 // Animation variants
 const cardVariants = {
@@ -49,6 +52,7 @@ interface DashboardData {
 
 export default function Dashboard() {
   const { getCurrentFarm } = useFarmStore();
+  const { language } = usePreferencesStore();
   const farm = getCurrentFarm();
 
   const [data, setData] = useState<DashboardData>({
@@ -177,7 +181,9 @@ export default function Dashboard() {
         <motion.div variants={cardVariants} className="card">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">Crop Health</p>
+              <p className="text-sm font-medium text-slate-500">
+                <ExplainedLabel term="healthScore" label="Crop Health" />
+              </p>
               <div className="flex items-end gap-2 mt-1">
                 <span className="text-3xl font-bold text-slate-900">
                   {loading ? '--' : healthStats.currentScore}
@@ -206,6 +212,12 @@ export default function Dashboard() {
                   </>
                 )}
               </div>
+              {/* Farmer-friendly advice */}
+              {!loading && (
+                <p className={`text-xs mt-2 ${getHealthAdvice(healthStats.currentScore, language).color}`}>
+                  {getHealthAdvice(healthStats.currentScore, language).action}
+                </p>
+              )}
             </div>
             <div
               className={`w-12 h-12 rounded-xl flex items-center justify-center ${
@@ -273,7 +285,9 @@ export default function Dashboard() {
         <motion.div variants={cardVariants} className="card">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">Disease Risk</p>
+              <p className="text-sm font-medium text-slate-500">
+                <ExplainedLabel term="diseaseRisk" label="Disease Risk" />
+              </p>
               <div className="flex items-end gap-2 mt-1">
                 <span className="text-3xl font-bold text-slate-900">
                   {loading ? '--' : highRiskForecasts.diseases.length}
@@ -281,7 +295,7 @@ export default function Dashboard() {
                 <span className="text-slate-400 text-sm mb-1">high risk</span>
               </div>
               <p className="text-sm text-slate-500 mt-2">
-                {highRiskForecasts.pests.length} pest warnings
+                <ExplainedLabel term="pestRisk" label={`${highRiskForecasts.pests.length} pest warnings`} />
               </p>
             </div>
             <div
@@ -308,7 +322,9 @@ export default function Dashboard() {
         <motion.div variants={cardVariants} className="card">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-500">NDVI Index</p>
+              <p className="text-sm font-medium text-slate-500">
+                <ExplainedLabel term="ndvi" label="NDVI Index" />
+              </p>
               <div className="flex items-end gap-2 mt-1">
                 <span className="text-3xl font-bold text-slate-900">
                   {loading ? '--' : healthStats.ndvi.toFixed(2)}
@@ -317,6 +333,12 @@ export default function Dashboard() {
               <p className="text-sm text-slate-500 mt-2">
                 {data.satellite?.data?.[0]?.healthStatus || 'Loading...'}
               </p>
+              {/* Farmer-friendly NDVI explanation */}
+              {!loading && healthStats.ndvi > 0 && (
+                <p className="text-xs text-blue-600 mt-1">
+                  {getNdviExplanation(healthStats.ndvi, language).replace(/[🌿🌱🌾🍂⚠️]/g, '').trim()}
+                </p>
+              )}
             </div>
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
               <Satellite className="w-6 h-6 text-blue-600" />

@@ -37,6 +37,9 @@ import {
   Filler,
 } from 'chart.js';
 import * as api from '@/services/apiService';
+import { ExplainedLabel } from '@/components/common/InfoTooltip';
+import { getHealthAdvice, getNdviExplanation } from '@/utils/farmerFriendly';
+import { usePreferencesStore } from '@/stores/preferencesStore';
 
 // Register Chart.js components
 ChartJS.register(
@@ -52,6 +55,7 @@ ChartJS.register(
 
 export default function CropHealth() {
   const { getCurrentFarm } = useFarmStore();
+  const { language } = usePreferencesStore();
   const farm = getCurrentFarm();
 
   const [healthData, setHealthData] = useState<api.CropHealthResponse | null>(null);
@@ -383,11 +387,16 @@ export default function CropHealth() {
               </p>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg">
-              <p className="text-xs text-slate-500">NDVI Index</p>
+              <p className="text-xs text-slate-500">
+                <ExplainedLabel term="ndvi" label="NDVI Index" />
+              </p>
               <p className="font-semibold text-green-600">{latestSatellite.ndvi.toFixed(3)}</p>
+              <p className="text-xs text-green-700 mt-1">{getNdviExplanation(latestSatellite.ndvi, language).replace(/[🌿🌱🌾🍂⚠️]/g, '').trim()}</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg">
-              <p className="text-xs text-slate-500">NDWI (Water)</p>
+              <p className="text-xs text-slate-500">
+                <ExplainedLabel term="ndwi" label="NDWI (Water)" />
+              </p>
               <p className="font-semibold text-blue-600">{latestSatellite.ndwi.toFixed(3)}</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg">
@@ -395,7 +404,9 @@ export default function CropHealth() {
               <p className="font-semibold text-slate-700">{latestSatellite.cloudCover}%</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg">
-              <p className="text-xs text-slate-500">LAI (Leaf Area)</p>
+              <p className="text-xs text-slate-500">
+                <ExplainedLabel term="lai" label="LAI (Leaf Area)" />
+              </p>
               <p className="font-semibold text-slate-700">{latestSatellite.lai.toFixed(2)}</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg">
@@ -403,9 +414,14 @@ export default function CropHealth() {
               <p className="font-semibold text-slate-700 capitalize">{latestSatellite.source}</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg col-span-2">
-              <p className="text-xs text-slate-500">Health Status</p>
+              <p className="text-xs text-slate-500">
+                <ExplainedLabel term="healthScore" label="Health Status" />
+              </p>
               <p className={`font-semibold capitalize ${getScoreColor(latestSatellite.healthScore)}`}>
                 {latestSatellite.healthStatus} ({latestSatellite.healthScore}/100)
+              </p>
+              <p className={`text-xs mt-1 ${getHealthAdvice(latestSatellite.healthScore, language).color}`}>
+                {getHealthAdvice(latestSatellite.healthScore, language).action}
               </p>
             </div>
           </div>
