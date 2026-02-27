@@ -1,0 +1,27 @@
+{
+  "name": "@green-sentinel/infrastructure",
+  "version": "1.0.0",
+  "description": "AWS CDK Infrastructure for Green Sentinel",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist cdk.out",
+    "cdk": "cdk",
+    "synth": "cdk synth",
+    "deploy": "cdk deploy --all",
+    "deploy:prod": "cdk deploy --all --context environment=production",
+    "destroy": "cdk destroy --all",
+    "diff": "cdk diff",
+    "bootstrap": "cdk bootstrap"
+  },
+  "dependencies": {
+    "@green-sentinel/shared": "*",
+    "aws-cdk-lib": "^2.120.0",
+    "constructs": "^10.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "aws-cdk": "^2.120.0",
+    "typescript": "^5.3.3"
+  }
+}
