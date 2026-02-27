@@ -243,33 +243,171 @@ export default function ThreatHistory() {
 // =============================================================================
 
 /**
+ * Parse alert description JSON to extract prediction data
+ */
+interface PredictionDetails {
+  type: 'disease' | 'pest' | 'weather' | 'diagnosis' | 'general';
+  name?: string;
+  localName?: string;
+  riskScore?: number;
+  probability?: number;
+  riskLevel?: string;
+  confidence?: number;
+  severity?: string;
+  symptoms?: string[];
+  triggers?: string[];
+  causes?: string[];
+  treatment?: string[];
+  prevention?: string[];
+  preventiveActions?: string[];
+  curativeActions?: string[];
+  controlMeasures?: { type: string; description: string; effectiveness?: number }[];
+  identificationTips?: string[];
+  economicThreshold?: string;
+  summary?: string;
+  detected?: boolean;
+  affectedCrops?: string[];
+  weather?: {
+    temp?: number;
+    humidity?: number;
+    precipitation?: number;
+    windSpeed?: number;
+  };
+  rawData?: Record<string, unknown>;
+}
+
+function parsePredictionData(description: string): PredictionDetails | null {
+  if (!description) return null;
+
+  const trimmed = description.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+    return null;
+  }
+
+  try {
+    const data = JSON.parse(trimmed);
+
+    // Bedrock AI diagnosis data (from disease scanner)
+    if (data.detected !== undefined || (data.disease && data.treatment) || (data.confidence !== undefined && data.summary)) {
+      return {
+        type: 'diagnosis',
+        name: data.disease,
+        localName: data.hindiName,
+        confidence: data.confidence,
+        severity: data.severity,
+        detected: data.detected,
+        symptoms: data.symptoms,
+        causes: data.causes,
+        treatment: data.treatment,
+        prevention: data.prevention,
+        affectedCrops: data.affectedCrops,
+        summary: data.summary,
+        rawData: data,
+      };
+    }
+
+    // Disease risk data (from forecast)
+    if (data.diseaseId || (data.disease && !data.treatment) || data.preventiveActions) {
+      return {
+        type: 'disease',
+        name: data.name || data.disease,
+        localName: data.localName,
+        riskScore: data.riskScore,
+        probability: data.probability,
+        riskLevel: data.riskLevel,
+        symptoms: data.symptoms,
+        triggers: data.triggers,
+        preventiveActions: data.preventiveActions,
+        curativeActions: data.curativeActions,
+        rawData: data,
+      };
+    }
+
+    // Pest risk data
+    if (data.pestId || data.pest || data.controlMeasures || data.identificationTips) {
+      return {
+        type: 'pest',
+        name: data.name || data.pest,
+        localName: data.localName,
+        riskScore: data.riskScore,
+        riskLevel: data.riskLevel,
+        identificationTips: data.identificationTips,
+        controlMeasures: data.controlMeasures,
+        economicThreshold: data.economicThreshold,
+        triggers: data.triggers,
+        rawData: data,
+      };
+    }
+
+    // Weather data
+    if (data.weather || data.temp !== undefined || data.temperature !== undefined) {
+      const w = data.weather || data;
+      return {
+        type: 'weather',
+        weather: {
+          temp: w.temp ?? w.temperature,
+          humidity: w.humidity,
+          precipitation: w.precipitation,
+          windSpeed: w.windSpeed,
+        },
+        rawData: data,
+      };
+    }
+
+    // General data with risk info
+    if (data.risk !== undefined || data.riskScore !== undefined || data.confidence !== undefined) {
+      return {
+        type: 'general',
+        name: data.name || data.title,
+        riskScore: data.riskScore ?? data.risk ?? data.confidence,
+        riskLevel: data.riskLevel ?? data.severity,
+        rawData: data,
+      };
+    }
+
+    return { type: 'general', rawData: data };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Format description - handles raw JSON data that might be in alert descriptions
  */
 function formatDescription(description: string): string {
   if (!description) return 'No description available';
 
-  // Check if the description looks like JSON
-  const trimmed = description.trim();
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-    try {
-      const data = JSON.parse(trimmed);
-      // If it's weather data, format it nicely
-      if (data.weather || data.temp !== undefined) {
-        const w = data.weather || data;
-        const parts = [];
-        if (w.temp !== undefined) parts.push(`Temperature: ${w.temp}°C`);
-        if (w.humidity !== undefined) parts.push(`Humidity: ${w.humidity}%`);
-        if (w.precipitation !== undefined) parts.push(`Precipitation: ${w.precipitation}mm`);
-        if (w.windSpeed !== undefined) parts.push(`Wind: ${w.windSpeed} km/h`);
-        return parts.length > 0 ? parts.join(', ') : 'Weather data received';
+  const prediction = parsePredictionData(description);
+  if (prediction) {
+    // AI Diagnosis from Bedrock
+    if (prediction.type === 'diagnosis') {
+      if (prediction.detected) {
+        const conf = prediction.confidence ? ` (${prediction.confidence}% confidence)` : '';
+        return `${prediction.name || 'Disease detected'}${conf} - tap for diagnosis details`;
       }
-      // For other JSON, just return a summary
-      return 'Data received - click for details';
-    } catch {
-      // Not valid JSON, return as-is
-      return description;
+      return 'Healthy plant - tap for details';
     }
+
+    // Weather data
+    if (prediction.type === 'weather' && prediction.weather) {
+      const w = prediction.weather;
+      const parts = [];
+      if (w.temp !== undefined) parts.push(`Temperature: ${w.temp}°C`);
+      if (w.humidity !== undefined) parts.push(`Humidity: ${w.humidity}%`);
+      if (w.precipitation !== undefined) parts.push(`Precipitation: ${w.precipitation}mm`);
+      if (w.windSpeed !== undefined) parts.push(`Wind: ${w.windSpeed} km/h`);
+      return parts.length > 0 ? parts.join(', ') : 'Weather alert';
+    }
+
+    // Disease/Pest forecast
+    if (prediction.name) {
+      const riskPart = prediction.riskScore ? ` (${prediction.riskScore}% risk)` : '';
+      return `${prediction.name}${riskPart} - tap for details`;
+    }
+
+    return 'Prediction available - tap for details';
   }
+
   return description;
 }
 
@@ -338,6 +476,9 @@ function AlertDetailModal({
   const colors = severityColors[alert.severity] || defaultColors;
   const date = new Date(alert.alertTimestamp);
 
+  // Parse prediction details from description
+  const prediction = parsePredictionData(alert.description);
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <motion.div
@@ -379,19 +520,312 @@ function AlertDetailModal({
 
         {/* Content */}
         <div className="p-4 space-y-4">
-          <div>
-            <p className="text-xs text-slate-500 uppercase mb-1">Description</p>
-            <p className="text-slate-700">{formatDescription(alert.description)}</p>
-          </div>
+          {/* AI Diagnosis Details (from Bedrock disease scanner) */}
+          {prediction && prediction.type === 'diagnosis' && (
+            <>
+              {/* Detection Status */}
+              <div className={`p-4 rounded-xl ${prediction.detected ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
+                <div className="flex items-center gap-3">
+                  {prediction.detected ? (
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  ) : (
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  )}
+                  <div className="flex-1">
+                    <h3 className={`font-semibold ${prediction.detected ? 'text-red-900' : 'text-green-900'}`}>
+                      {prediction.detected ? (prediction.name || 'Disease Detected') : 'Healthy Plant'}
+                    </h3>
+                    {prediction.localName && (
+                      <p className="text-sm text-slate-600">{prediction.localName}</p>
+                    )}
+                  </div>
+                  {prediction.confidence !== undefined && prediction.confidence > 0 && (
+                    <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                      prediction.confidence >= 80 ? 'bg-green-100 text-green-700' :
+                      prediction.confidence >= 60 ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-orange-100 text-orange-700'
+                    }`}>
+                      {prediction.confidence}% confidence
+                    </span>
+                  )}
+                </div>
+              </div>
 
+              {/* Summary */}
+              {prediction.summary && (
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <p className="text-slate-700">{prediction.summary}</p>
+                </div>
+              )}
+
+              {prediction.detected && (
+                <>
+                  {/* Symptoms */}
+                  {prediction.symptoms && prediction.symptoms.length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase mb-2 font-medium">🔍 Symptoms Identified</p>
+                      <ul className="space-y-1">
+                        {prediction.symptoms.map((symptom, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                            <span className="text-yellow-500 mt-0.5">•</span>
+                            {symptom}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Causes */}
+                  {prediction.causes && prediction.causes.length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase mb-2 font-medium">❓ Possible Causes</p>
+                      <ul className="space-y-1">
+                        {prediction.causes.map((cause, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                            <span className="text-orange-500 mt-0.5">•</span>
+                            {cause}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Treatment */}
+                  {prediction.treatment && prediction.treatment.length > 0 && (
+                    <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-xs text-blue-700 uppercase mb-2 font-medium">💊 Recommended Treatment</p>
+                      <ul className="space-y-1">
+                        {prediction.treatment.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-blue-800">
+                            <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Prevention */}
+                  {prediction.prevention && prediction.prevention.length > 0 && (
+                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                      <p className="text-xs text-green-700 uppercase mb-2 font-medium">🛡️ Prevention Tips</p>
+                      <ul className="space-y-1">
+                        {prediction.prevention.map((item, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-green-800">
+                            <span className="text-green-500 mt-0.5">→</span>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Affected Crops */}
+                  {prediction.affectedCrops && prediction.affectedCrops.length > 0 && (
+                    <div>
+                      <p className="text-xs text-slate-500 uppercase mb-2 font-medium">🌾 Crops at Risk</p>
+                      <div className="flex flex-wrap gap-2">
+                        {prediction.affectedCrops.map((crop, i) => (
+                          <span key={i} className="px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-sm border border-amber-200 capitalize">
+                            {crop}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+          {/* Prediction Details Section (disease/pest forecast) */}
+          {prediction && (prediction.type === 'disease' || prediction.type === 'pest') && (
+            <>
+              {/* Risk Score */}
+              {(prediction.riskScore !== undefined || prediction.probability !== undefined) && (
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-slate-700">
+                      {prediction.name || alert.title}
+                      {prediction.localName && (
+                        <span className="text-slate-500 ml-2">({prediction.localName})</span>
+                      )}
+                    </p>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      (prediction.riskScore || 0) >= 70 ? 'bg-red-100 text-red-700' :
+                      (prediction.riskScore || 0) >= 50 ? 'bg-orange-100 text-orange-700' :
+                      'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {prediction.riskLevel || `${prediction.riskScore}% risk`}
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-2.5">
+                    <div
+                      className={`h-2.5 rounded-full ${
+                        (prediction.riskScore || 0) >= 70 ? 'bg-red-500' :
+                        (prediction.riskScore || 0) >= 50 ? 'bg-orange-500' :
+                        'bg-yellow-500'
+                      }`}
+                      style={{ width: `${Math.min(100, prediction.riskScore || prediction.probability || 0)}%` }}
+                    />
+                  </div>
+                  {prediction.probability !== undefined && prediction.probability !== prediction.riskScore && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      {prediction.probability}% probability of occurrence
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Triggers */}
+              {prediction.triggers && prediction.triggers.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-500 uppercase mb-2 font-medium">🎯 Triggers</p>
+                  <div className="flex flex-wrap gap-2">
+                    {prediction.triggers.map((trigger, i) => (
+                      <span key={i} className="px-2 py-1 bg-amber-50 text-amber-700 rounded-lg text-sm border border-amber-200">
+                        {trigger}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Symptoms (Disease) */}
+              {prediction.symptoms && prediction.symptoms.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-500 uppercase mb-2 font-medium">🔍 Symptoms to Look For</p>
+                  <ul className="space-y-1">
+                    {prediction.symptoms.map((symptom, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                        <span className="text-red-500 mt-0.5">•</span>
+                        {symptom}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Identification Tips (Pest) */}
+              {prediction.identificationTips && prediction.identificationTips.length > 0 && (
+                <div>
+                  <p className="text-xs text-slate-500 uppercase mb-2 font-medium">🔍 How to Identify</p>
+                  <ul className="space-y-1">
+                    {prediction.identificationTips.map((tip, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
+                        <span className="text-orange-500 mt-0.5">•</span>
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Preventive Actions */}
+              {prediction.preventiveActions && prediction.preventiveActions.length > 0 && (
+                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-xs text-green-700 uppercase mb-2 font-medium">🛡️ Prevention</p>
+                  <ul className="space-y-1">
+                    {prediction.preventiveActions.map((action, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-green-800">
+                        <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        {action}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Curative Actions */}
+              {prediction.curativeActions && prediction.curativeActions.length > 0 && (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-xs text-blue-700 uppercase mb-2 font-medium">💊 Treatment</p>
+                  <ul className="space-y-1">
+                    {prediction.curativeActions.map((action, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-blue-800">
+                        <span className="text-blue-500 mt-0.5">→</span>
+                        {action}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Control Measures (Pest) */}
+              {prediction.controlMeasures && prediction.controlMeasures.length > 0 && (
+                <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                  <p className="text-xs text-purple-700 uppercase mb-2 font-medium">🎯 Control Measures</p>
+                  <ul className="space-y-2">
+                    {prediction.controlMeasures.map((measure, i) => (
+                      <li key={i} className="text-sm text-purple-800">
+                        <span className="font-medium capitalize">{measure.type}:</span> {measure.description}
+                        {measure.effectiveness && (
+                          <span className="ml-2 text-xs text-purple-600">({measure.effectiveness}% effective)</span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Economic Threshold */}
+              {prediction.economicThreshold && (
+                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <p className="text-xs text-amber-700 uppercase mb-1 font-medium">📊 Action Threshold</p>
+                  <p className="text-sm text-amber-800">{prediction.economicThreshold}</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Weather Details */}
+          {prediction && prediction.type === 'weather' && prediction.weather && (
+            <div className="grid grid-cols-2 gap-3">
+              {prediction.weather.temp !== undefined && (
+                <div className="p-3 bg-orange-50 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-orange-600">{prediction.weather.temp}°C</p>
+                  <p className="text-xs text-orange-500">Temperature</p>
+                </div>
+              )}
+              {prediction.weather.humidity !== undefined && (
+                <div className="p-3 bg-blue-50 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-blue-600">{prediction.weather.humidity}%</p>
+                  <p className="text-xs text-blue-500">Humidity</p>
+                </div>
+              )}
+              {prediction.weather.precipitation !== undefined && (
+                <div className="p-3 bg-sky-50 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-sky-600">{prediction.weather.precipitation}mm</p>
+                  <p className="text-xs text-sky-500">Precipitation</p>
+                </div>
+              )}
+              {prediction.weather.windSpeed !== undefined && (
+                <div className="p-3 bg-slate-100 rounded-lg text-center">
+                  <p className="text-2xl font-bold text-slate-600">{prediction.weather.windSpeed}</p>
+                  <p className="text-xs text-slate-500">Wind (km/h)</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Fallback description for non-prediction alerts */}
+          {!prediction && (
+            <div>
+              <p className="text-xs text-slate-500 uppercase mb-1">Description</p>
+              <p className="text-slate-700">{alert.description || 'No description available'}</p>
+            </div>
+          )}
+
+          {/* Advisory */}
           {alert.advisory && (
             <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-xs text-blue-600 uppercase mb-1">Advisory</p>
+              <p className="text-xs text-blue-600 uppercase mb-1 font-medium">📋 Advisory</p>
               <p className="text-blue-800">{alert.advisory}</p>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          {/* Meta Info */}
+          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100">
             <div>
               <p className="text-xs text-slate-500 uppercase">Type</p>
               <p className="font-medium text-slate-900 capitalize">{alert.alertType}</p>
