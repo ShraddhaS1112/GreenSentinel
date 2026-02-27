@@ -11,6 +11,7 @@ import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as path from 'path';
 
 export interface GreenSentinelStackProps extends cdk.StackProps {
@@ -989,6 +990,40 @@ export class GreenSentinelStack extends cdk.Stack {
     });
 
     // =========================================================================
+    // Real NDVI Processor (Docker Container with GDAL/rasterio)
+    // =========================================================================
+
+    // ECR Repository for NDVI processor image
+    const ndviRepo = new ecr.Repository(this, 'NdviProcessorRepo', {
+      repositoryName: `${prefix}-ndvi-processor`,
+      removalPolicy: stage === 'dev' ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
+      emptyOnDelete: stage === 'dev',
+      lifecycleRules: [
+        {
+          maxImageCount: 3,
+          description: 'Keep only 3 images',
+        },
+      ],
+    });
+
+    // Docker-based Lambda for real NDVI calculation
+    const ndviProcessor = new lambda.DockerImageFunction(this, 'NdviProcessor', {
+      functionName: `${prefix}-ndvi-processor`,
+      code: lambda.DockerImageCode.fromImageAsset(
+        path.join(__dirname, '../lambda/ndvi-processor')
+      ),
+      role: lambdaRole,
+      environment: {
+        ...lambdaEnv,
+        PYTHONUNBUFFERED: '1',
+      },
+      timeout: cdk.Duration.minutes(10),
+      memorySize: 2048, // GDAL needs more memory
+      ephemeralStorageSize: cdk.Size.mebibytes(1024), // For temp files
+      description: 'Real NDVI processor using Sentinel-2 satellite bands with GDAL/rasterio',
+    });
+
+    // =========================================================================
     // API Gateway
     // =========================================================================
 
@@ -1659,11 +1694,19 @@ export class GreenSentinelStack extends cdk.Stack {
     // EventBridge Scheduled Rules
     // =========================================================================
 
-    // Daily satellite processing (6 AM IST)
+    // Daily satellite processing (6 AM IST) - Uses real NDVI processor with GDAL
     new events.Rule(this, 'DailySatelliteRule', {
       ruleName: `${prefix}-daily-satellite`,
       schedule: events.Schedule.cron({ minute: '30', hour: '0' }), // 6 AM IST = 00:30 UTC
+      targets: [new targets.LambdaFunction(ndviProcessor)],
+    });
+
+    // Keep simulated processor as backup (can be triggered manually)
+    new events.Rule(this, 'BackupSatelliteRule', {
+      ruleName: `${prefix}-backup-satellite`,
+      schedule: events.Schedule.cron({ minute: '0', hour: '12' }), // 5:30 PM IST backup
       targets: [new targets.LambdaFunction(satelliteProcessor)],
+      enabled: false, // Disabled by default
     });
 
     // Disease forecast every 6 hours
@@ -1718,6 +1761,11 @@ export class GreenSentinelStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'CognitoRegion', {
       value: this.region,
       description: 'AWS Region for Cognito',
+    });
+
+    new cdk.CfnOutput(this, 'NdviProcessorEcrUri', {
+      value: ndviRepo.repositoryUri,
+      description: 'ECR repository for NDVI processor Docker image',
     });
   }
 }
