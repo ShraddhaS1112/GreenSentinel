@@ -12,6 +12,8 @@ import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
+import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
+import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as path from 'path';
 
 export interface GreenSentinelStackProps extends cdk.StackProps {
@@ -407,8 +409,14 @@ export class GreenSentinelStack extends cdk.Stack {
 
     // Bedrock permissions for AI disease detection
     lambdaRole.addToPolicy(new iam.PolicyStatement({
-      actions: ['bedrock:InvokeModel'],
-      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-sonnet-20240229-v1:0'],
+      actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+      resources: ['arn:aws:bedrock:*::foundation-model/*'],
+    }));
+
+    // AWS Marketplace permissions (required for first-time Bedrock model access)
+    lambdaRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['aws-marketplace:ViewSubscriptions', 'aws-marketplace:Subscribe'],
+      resources: ['*'],
     }));
 
     // Common Lambda environment
@@ -1893,8 +1901,77 @@ export class GreenSentinelStack extends cdk.Stack {
     });
 
     // =========================================================================
+    // Frontend Hosting (S3 + CloudFront)
+    // =========================================================================
+
+    // S3 bucket for frontend static files
+    const frontendBucket = new s3.Bucket(this, 'FrontendBucket', {
+      bucketName: `${prefix}-frontend-${this.account}`,
+      removalPolicy: stage === 'dev' ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
+      autoDeleteObjects: stage === 'dev',
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+    });
+
+    // CloudFront Origin Access Identity
+    const originAccessIdentity = new cloudfront.OriginAccessIdentity(this, 'FrontendOAI', {
+      comment: `OAI for ${prefix} frontend`,
+    });
+
+    // Grant read access to CloudFront
+    frontendBucket.grantRead(originAccessIdentity);
+
+    // CloudFront distribution
+    const distribution = new cloudfront.Distribution(this, 'FrontendDistribution', {
+      comment: `${prefix} frontend distribution`,
+      defaultBehavior: {
+        origin: new origins.S3Origin(frontendBucket, {
+          originAccessIdentity,
+        }),
+        viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+        cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
+      },
+      defaultRootObject: 'index.html',
+      errorResponses: [
+        {
+          httpStatus: 403,
+          responseHttpStatus: 200,
+          responsePagePath: '/index.html',
+          ttl: cdk.Duration.minutes(5),
+        },
+        {
+          httpStatus: 404,
+          responseHttpStatus: 200,
+          responsePagePath: '/index.html',
+          ttl: cdk.Duration.minutes(5),
+        },
+      ],
+      priceClass: cloudfront.PriceClass.PRICE_CLASS_100, // Cheapest (US, Canada, Europe)
+    });
+
+    // =========================================================================
     // Outputs
     // =========================================================================
+
+    new cdk.CfnOutput(this, 'FrontendUrl', {
+      value: `https://${distribution.distributionDomainName}`,
+      description: 'CloudFront URL for frontend (HTTPS)',
+      exportName: `${prefix}-frontend-url`,
+    });
+
+    new cdk.CfnOutput(this, 'FrontendBucketName', {
+      value: frontendBucket.bucketName,
+      description: 'S3 bucket for frontend static files',
+      exportName: `${prefix}-frontend-bucket`,
+    });
+
+    new cdk.CfnOutput(this, 'CloudFrontDistributionId', {
+      value: distribution.distributionId,
+      description: 'CloudFront distribution ID (for cache invalidation)',
+      exportName: `${prefix}-cloudfront-id`,
+    });
 
     new cdk.CfnOutput(this, 'ApiEndpoint', {
       value: this.api.url,
