@@ -3,6 +3,7 @@
  */
 
 export { default as Dashboard } from './Dashboard';
+export { default as SimpleDashboard } from './SimpleDashboard';
 export { default as ThreatHistory } from './ThreatHistory';
 export { default as CropHealth } from './CropHealth';
 export { default as FarmManagement } from './FarmManagement';

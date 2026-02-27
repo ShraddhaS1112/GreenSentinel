@@ -2,24 +2,43 @@
  * Green Sentinel - Login Page
  *
  * Phone number + OTP authentication for farmers.
+ * Uses AWS Cognito when configured, falls back to demo mode.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Phone, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Shield, Phone, Lock, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 
-type Step = 'phone' | 'otp';
-
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError } = useAuthStore();
+  const {
+    sendOtp,
+    verifyOtp,
+    isLoading,
+    error,
+    clearError,
+    signInStep,
+    isAuthenticated,
+    cognitoConfigured,
+  } = useAuthStore();
 
-  const [step, setStep] = useState<Step>('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState('');
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Clear error when switching steps
+  useEffect(() => {
+    clearError();
+  }, [signInStep]);
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,9 +51,10 @@ export default function Login() {
       return;
     }
 
-    // In production, call API to send OTP
-    toast.success('OTP sent to your phone');
-    setStep('otp');
+    const success = await sendOtp(phoneNumber);
+    if (success) {
+      toast.success('OTP sent to your phone');
+    }
   };
 
   const handleOtpSubmit = async (e: React.FormEvent) => {
@@ -46,13 +66,16 @@ export default function Login() {
       return;
     }
 
-    try {
-      await login(phoneNumber, otp);
+    const success = await verifyOtp(otp);
+    if (success) {
       toast.success('Welcome to Green Sentinel!');
       navigate('/');
-    } catch (err) {
-      toast.error('Invalid OTP. Please try again.');
     }
+  };
+
+  const handleChangePhone = () => {
+    setOtp('');
+    useAuthStore.setState({ signInStep: 'PHONE', error: null });
   };
 
   return (
@@ -76,10 +99,10 @@ export default function Login() {
         {/* Login card */}
         <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
           <h2 className="text-xl font-semibold text-slate-900 mb-6">
-            {step === 'phone' ? 'Welcome Back' : 'Enter OTP'}
+            {signInStep === 'PHONE' ? 'Welcome Back' : 'Enter OTP'}
           </h2>
 
-          {step === 'phone' ? (
+          {signInStep === 'PHONE' ? (
             <form onSubmit={handlePhoneSubmit}>
               <div className="mb-4">
                 <label className="label">Mobile Number</label>
@@ -101,7 +124,7 @@ export default function Login() {
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  We'll send you a verification code
+                  We'll send you a verification code via SMS
                 </p>
               </div>
 
@@ -114,7 +137,7 @@ export default function Login() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    Continue
+                    Get OTP
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -135,6 +158,7 @@ export default function Login() {
                     autoComplete="one-time-code"
                     inputMode="numeric"
                     maxLength={6}
+                    autoFocus
                     required
                   />
                 </div>
@@ -160,9 +184,10 @@ export default function Login() {
 
               <button
                 type="button"
-                onClick={() => setStep('phone')}
+                onClick={handleChangePhone}
                 className="btn-ghost w-full text-slate-600"
               >
+                <ArrowLeft className="w-4 h-4" />
                 Change phone number
               </button>
             </form>
@@ -180,12 +205,14 @@ export default function Login() {
           By continuing, you agree to our Terms of Service and Privacy Policy
         </p>
 
-        {/* Demo hint */}
-        <div className="mt-4 p-3 bg-white/10 rounded-lg text-center">
-          <p className="text-white/80 text-sm">
-            <strong>Demo:</strong> Enter any 10-digit number and OTP "123456"
-          </p>
-        </div>
+        {/* Demo hint - only show when Cognito not configured */}
+        {!cognitoConfigured && (
+          <div className="mt-4 p-3 bg-white/10 rounded-lg text-center">
+            <p className="text-white/80 text-sm">
+              <strong>Demo Mode:</strong> Enter any 10-digit number and any 6-digit OTP
+            </p>
+          </div>
+        )}
       </motion.div>
     </div>
   );

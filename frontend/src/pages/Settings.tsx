@@ -16,10 +16,13 @@ import {
   Volume2,
   MessageSquare,
   AlertTriangle,
+  Sparkles,
+  Leaf,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useFarmStore } from '@/stores/farmStore';
-import type { Language } from '@green-sentinel/shared';
+import { usePreferencesStore, useTranslation, type UIMode, type Language } from '@/stores/preferencesStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import toast from 'react-hot-toast';
 
 const languages: { code: Language; name: string; native: string }[] = [
@@ -35,17 +38,27 @@ const languages: { code: Language; name: string; native: string }[] = [
 export default function Settings() {
   const { user, updateLanguage, logout } = useAuthStore();
   const { getCurrentFarm } = useFarmStore();
+  const { uiMode, setUIMode, setLanguage: setPrefLanguage } = usePreferencesStore();
+  const { t } = useTranslation();
   const farm = getCurrentFarm();
+  const isMobile = useIsMobile(); // Mode toggle only shown on mobile
 
   const [voiceEnabled, setVoiceEnabled] = useState(
-    user?.alertPreferences.voiceEnabled ?? true
+    user?.alertPreferences?.voiceEnabled ?? true
   );
   const [textEnabled, setTextEnabled] = useState(
-    user?.alertPreferences.textEnabled ?? true
+    user?.alertPreferences?.textEnabled ?? true
   );
+
+  const handleModeChange = (mode: UIMode) => {
+    setUIMode(mode);
+    toast.success(mode === 'simple' ? t('settings.simpleMode') : t('settings.expertMode'));
+  };
 
   const handleLanguageChange = (language: Language) => {
     updateLanguage(language);
+    // Also update preferences store
+    setPrefLanguage(language);
     toast.success('Language preference updated');
   };
 
@@ -94,6 +107,88 @@ export default function Settings() {
           </div>
         </div>
       </motion.div>
+
+      {/* UI Mode Section - Only shown on mobile devices */}
+      {isMobile && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="card mb-4"
+        >
+          <h2 className="section-header flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-slate-400" />
+            {t('settings.title')} Mode
+          </h2>
+          <p className="text-sm text-slate-500 mb-4">
+            Choose how you want to view information
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Simple Mode */}
+            <button
+              onClick={() => handleModeChange('simple')}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                uiMode === 'simple'
+                  ? 'border-green-500 bg-green-50'
+                  : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  uiMode === 'simple' ? 'bg-green-500' : 'bg-slate-200'
+                }`}>
+                  <Leaf className={`w-6 h-6 ${uiMode === 'simple' ? 'text-white' : 'text-slate-500'}`} />
+                </div>
+                <div>
+                  <p className={`font-semibold ${uiMode === 'simple' ? 'text-green-700' : 'text-slate-700'}`}>
+                    {t('settings.simpleMode')}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {t('settings.simpleModeDesc')}
+                  </p>
+                </div>
+              </div>
+              {uiMode === 'simple' && (
+                <div className="mt-3 text-xs text-green-600 font-medium">
+                  ✓ Active
+                </div>
+              )}
+            </button>
+
+            {/* Expert Mode */}
+            <button
+              onClick={() => handleModeChange('expert')}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                uiMode === 'expert'
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  uiMode === 'expert' ? 'bg-blue-500' : 'bg-slate-200'
+                }`}>
+                  <Sparkles className={`w-6 h-6 ${uiMode === 'expert' ? 'text-white' : 'text-slate-500'}`} />
+                </div>
+                <div>
+                  <p className={`font-semibold ${uiMode === 'expert' ? 'text-blue-700' : 'text-slate-700'}`}>
+                    {t('settings.expertMode')}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {t('settings.expertModeDesc')}
+                  </p>
+                </div>
+              </div>
+              {uiMode === 'expert' && (
+                <div className="mt-3 text-xs text-blue-600 font-medium">
+                  ✓ Active
+                </div>
+              )}
+            </button>
+          </div>
+        </motion.div>
+      )}
 
       {/* Language Section */}
       <motion.div

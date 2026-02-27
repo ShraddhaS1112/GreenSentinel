@@ -8,6 +8,7 @@ import OfflineBanner from '@/components/common/OfflineBanner';
 
 // Lazy load pages for better performance
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const SimpleDashboard = lazy(() => import('@/pages/SimpleDashboard'));
 const ThreatHistory = lazy(() => import('@/pages/ThreatHistory'));
 const CropHealth = lazy(() => import('@/pages/CropHealth'));
 const FarmManagement = lazy(() => import('@/pages/FarmManagement'));
@@ -19,9 +20,11 @@ const Weather = lazy(() => import('@/pages/Weather'));
 const IrrigationPlanner = lazy(() => import('@/pages/IrrigationPlanner'));
 const DiseaseScanner = lazy(() => import('@/pages/DiseaseScanner'));
 
-// Hooks
+// Hooks and Stores
 import { useAuthStore } from '@/stores/authStore';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { usePreferencesStore } from '@/stores/preferencesStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 /**
  * Protected route wrapper
@@ -38,6 +41,19 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   return <>{children}</>;
+}
+
+/**
+ * Dashboard Switch - renders Simple or Expert dashboard based on user preference
+ * Simple mode is only available on mobile devices
+ */
+function DashboardSwitch() {
+  const { uiMode } = usePreferencesStore();
+  const isMobile = useIsMobile();
+
+  // Simple mode only on mobile phones
+  const showSimple = isMobile && uiMode === 'simple';
+  return showSimple ? <SimpleDashboard /> : <Dashboard />;
 }
 
 /**
@@ -65,7 +81,7 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Dashboard />} />
+            <Route index element={<DashboardSwitch />} />
             <Route path="threats" element={<ThreatHistory />} />
             <Route path="health" element={<CropHealth />} />
             <Route path="weather" element={<Weather />} />
