@@ -1,0 +1,366 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+
+  /* Improve focus states for accessibility */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary-500;
+  }
+
+  /* Better touch targets on mobile */
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    @apply min-h-[44px];
+  }
+
+  /* Prevent zoom on input focus on iOS */
+  @supports (-webkit-touch-callout: none) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* Component styles */
+@layer components {
+  /* Card component */
+  .card {
+    @apply bg-white rounded-xl shadow-card p-4 sm:p-6;
+  }
+
+  /* Button variants */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800;
+  }
+
+  .btn-secondary {
+    @apply btn bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 active:bg-red-800;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent hover:bg-slate-100 active:bg-slate-200;
+  }
+
+  .btn-icon {
+    @apply btn p-2 min-h-0;
+  }
+
+  /* Input styles */
+  .input {
+    @apply w-full px-4 py-3 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 transition-colors duration-200;
+    @apply focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 focus:outline-none;
+  }
+
+  .input-error {
+    @apply border-red-500 focus:border-red-500 focus:ring-red-500/20;
+  }
+
+  /* Label styles */
+  .label {
+    @apply block text-sm font-medium text-slate-700 mb-1.5;
+  }
+
+  /* Badge/Tag styles */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    @apply badge bg-green-100 text-green-800;
+  }
+
+  .badge-warning {
+    @apply badge bg-yellow-100 text-yellow-800;
+  }
+
+  .badge-danger {
+    @apply badge bg-red-100 text-red-800;
+  }
+
+  .badge-info {
+    @apply badge bg-blue-100 text-blue-800;
+  }
+
+  /* Status indicators */
+  .status-dot {
+    @apply w-2 h-2 rounded-full;
+  }
+
+  .status-online {
+    @apply status-dot bg-green-500;
+  }
+
+  .status-offline {
+    @apply status-dot bg-slate-400;
+  }
+
+  .status-error {
+    @apply status-dot bg-red-500;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-slate-200 rounded animate-pulse;
+  }
+
+  /* Page container */
+  .page-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6;
+  }
+
+  /* Section header */
+  .section-header {
+    @apply text-lg font-semibold text-slate-900 mb-4;
+  }
+
+  /* Divider */
+  .divider {
+    @apply h-px bg-slate-200 my-4;
+  }
+}
+
+/* Utility classes */
+@layer utilities {
+  /* Hide scrollbar but keep functionality */
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-primary-400;
+  }
+
+  /* Safe area padding for notched devices */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Transition utilities */
+  .transition-transform-opacity {
+    @apply transition-[transform,opacity] duration-200 ease-out;
+  }
+
+  /* Text truncation */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+}
+
+/* Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Toast styles */
+.toast-container {
+  @apply fixed bottom-4 left-4 right-4 z-50 flex flex-col gap-2 pointer-events-none;
+}
+
+.toast-container > * {
+  @apply pointer-events-auto;
+}
+
+/* Map placeholder styles */
+.map-container {
+  @apply bg-slate-100 rounded-lg overflow-hidden relative;
+}
+
+.map-placeholder {
+  @apply absolute inset-0 flex items-center justify-center text-slate-400;
+}
+
+/* Chart container */
+.chart-container {
+  @apply relative w-full;
+  height: 250px;
+}
+
+@media (min-width: 640px) {
+  .chart-container {
+    height: 300px;
+  }
+}
+
+/* Offline indicator */
+.offline-banner {
+  @apply fixed top-0 left-0 right-0 bg-amber-500 text-white text-center py-2 text-sm font-medium z-50;
+  @apply safe-top;
+}
+
+/* Pull to refresh */
+.pull-to-refresh {
+  @apply h-16 flex items-center justify-center;
+}
+
+/* Empty state */
+.empty-state {
+  @apply flex flex-col items-center justify-center py-12 text-center;
+}
+
+.empty-state-icon {
+  @apply w-16 h-16 text-slate-300 mb-4;
+}
+
+.empty-state-title {
+  @apply text-lg font-medium text-slate-700 mb-2;
+}
+
+.empty-state-description {
+  @apply text-slate-500 max-w-sm;
+}
+
+/* Threat card colors */
+.threat-fire {
+  @apply border-l-4 border-l-red-500 bg-red-50;
+}
+
+.threat-human {
+  @apply border-l-4 border-l-orange-500 bg-orange-50;
+}
+
+.threat-animal {
+  @apply border-l-4 border-l-yellow-500 bg-yellow-50;
+}
+
+/* Health score gauge */
+.health-gauge {
+  @apply relative w-32 h-32;
+}
+
+.health-gauge-circle {
+  @apply absolute inset-0;
+  transform: rotate(-90deg);
+}
+
+.health-gauge-value {
+  @apply absolute inset-0 flex items-center justify-center text-2xl font-bold;
+}
+
+/* Responsive grid */
+.grid-dashboard {
+  @apply grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+}
+
+/* Navigation */
+.nav-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-lg text-slate-600 transition-colors duration-200;
+  @apply hover:bg-slate-100 hover:text-slate-900;
+}
+
+.nav-item.active {
+  @apply bg-primary-50 text-primary-700 font-medium;
+}
+
+/* Mobile bottom navigation */
+.bottom-nav {
+  @apply fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 safe-bottom;
+}
+
+.bottom-nav-item {
+  @apply flex flex-col items-center justify-center py-2 text-xs text-slate-500 transition-colors;
+}
+
+.bottom-nav-item.active {
+  @apply text-primary-600;
+}
+
+.bottom-nav-item svg {
+  @apply w-6 h-6 mb-1;
+}
