@@ -110,7 +110,7 @@ export default function CropHealth() {
   const weekAgoScore = historyItems.length > 7 ? historyItems[7]?.healthScore || currentScore : currentScore;
   const scoreChange = currentScore - weekAgoScore;
 
-  // Chart data from API history
+  // Chart data from API history - simplified to just health score
   const chartData = useMemo(() => {
     const history = [...(healthData?.history || [])].reverse(); // Oldest first for chart
 
@@ -121,29 +121,106 @@ export default function CropHealth() {
       }),
       datasets: [
         {
-          label: 'Health Score',
+          label: language === 'hi' ? 'फसल स्वास्थ्य' : 'Crop Health',
           data: history.map((d) => d.healthScore),
           fill: true,
           borderColor: '#16a34a',
           backgroundColor: 'rgba(22, 163, 74, 0.1)',
           tension: 0.4,
-          pointRadius: 2,
+          pointRadius: 3,
           pointHoverRadius: 6,
           pointHoverBackgroundColor: '#16a34a',
         },
-        {
-          label: 'NDVI × 100',
-          data: history.map((d) => Math.round(d.ndvi * 100)),
-          fill: false,
-          borderColor: '#3b82f6',
-          borderDash: [5, 5],
-          tension: 0.4,
-          pointRadius: 0,
-          pointHoverRadius: 4,
-        },
       ],
     };
-  }, [healthData]);
+  }, [healthData, language]);
+
+  // Simple trend interpretation for farmers
+  const trendInterpretation = useMemo(() => {
+    if (!healthData?.history || healthData.history.length < 2) return null;
+
+    const history = healthData.history;
+    const latest = history[0]?.healthScore || 0;
+    const twoDaysAgo = history[1]?.healthScore || latest;
+    const weekAgo = history[6]?.healthScore || latest;
+
+    const shortTermChange = latest - twoDaysAgo;
+    const weeklyChange = latest - weekAgo;
+
+    // Determine trend message
+    let trendMessage = '';
+    let trendColor = '';
+    let trendIcon = '';
+    let actionAdvice = '';
+
+    if (language === 'hi') {
+      if (weeklyChange > 5) {
+        trendMessage = 'फसल में सुधार हो रहा है';
+        trendColor = 'text-green-700 bg-green-50 border-green-200';
+        trendIcon = '📈';
+        actionAdvice = 'बहुत अच्छा! जो कर रहे हैं वो जारी रखें।';
+      } else if (weeklyChange < -5) {
+        trendMessage = 'फसल की हालत बिगड़ रही है';
+        trendColor = 'text-red-700 bg-red-50 border-red-200';
+        trendIcon = '📉';
+        actionAdvice = 'ध्यान दें! पानी, कीट या बीमारी की जांच करें।';
+      } else if (shortTermChange > 3) {
+        trendMessage = 'पिछले 2 दिनों में थोड़ा सुधार';
+        trendColor = 'text-green-600 bg-green-50 border-green-200';
+        trendIcon = '↗️';
+        actionAdvice = 'अच्छी प्रगति। देखभाल जारी रखें।';
+      } else if (shortTermChange < -3) {
+        trendMessage = 'पिछले 2 दिनों में थोड़ी गिरावट';
+        trendColor = 'text-orange-700 bg-orange-50 border-orange-200';
+        trendIcon = '↘️';
+        actionAdvice = 'फसल की जांच करें - पानी या कीट की समस्या हो सकती है।';
+      } else {
+        trendMessage = 'फसल स्थिर है';
+        trendColor = 'text-blue-700 bg-blue-50 border-blue-200';
+        trendIcon = '➡️';
+        actionAdvice = 'सब ठीक है। नियमित देखभाल जारी रखें।';
+      }
+    } else {
+      if (weeklyChange > 5) {
+        trendMessage = 'Crops are improving';
+        trendColor = 'text-green-700 bg-green-50 border-green-200';
+        trendIcon = '📈';
+        actionAdvice = 'Great progress! Keep doing what you\'re doing.';
+      } else if (weeklyChange < -5) {
+        trendMessage = 'Crops are declining';
+        trendColor = 'text-red-700 bg-red-50 border-red-200';
+        trendIcon = '📉';
+        actionAdvice = 'Attention needed! Check water, pests, or disease.';
+      } else if (shortTermChange > 3) {
+        trendMessage = 'Slight improvement in last 2 days';
+        trendColor = 'text-green-600 bg-green-50 border-green-200';
+        trendIcon = '↗️';
+        actionAdvice = 'Good progress. Continue current care.';
+      } else if (shortTermChange < -3) {
+        trendMessage = 'Slight decline in last 2 days';
+        trendColor = 'text-orange-700 bg-orange-50 border-orange-200';
+        trendIcon = '↘️';
+        actionAdvice = 'Check your crops - may need water or pest treatment.';
+      } else {
+        trendMessage = 'Crops are stable';
+        trendColor = 'text-blue-700 bg-blue-50 border-blue-200';
+        trendIcon = '➡️';
+        actionAdvice = 'Everything normal. Continue regular care.';
+      }
+    }
+
+    return {
+      message: trendMessage,
+      color: trendColor,
+      icon: trendIcon,
+      advice: actionAdvice,
+      latest,
+      twoDaysAgo,
+      weekAgo,
+      shortTermChange,
+      weeklyChange,
+    };
+  }, [healthData, language]);
 
   const chartOptions = {
     responsive: true,
@@ -341,23 +418,96 @@ export default function CropHealth() {
         </motion.div>
       )}
 
-      {/* Health Trend Chart */}
-      {healthData && healthData.history.length > 0 && (
+      {/* Trend Interpretation Card - Simple farmer-friendly summary */}
+      {trendInterpretation && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          className={`rounded-2xl p-5 mb-6 border-2 ${trendInterpretation.color}`}
+        >
+          <div className="flex items-start gap-4">
+            <span className="text-4xl">{trendInterpretation.icon}</span>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold">{trendInterpretation.message}</h3>
+              <p className="mt-2 opacity-90">{trendInterpretation.advice}</p>
+
+              {/* Simple comparison boxes */}
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="bg-white/60 rounded-lg p-3 text-center">
+                  <p className="text-xs opacity-70">
+                    {language === 'hi' ? '7 दिन पहले' : '7 days ago'}
+                  </p>
+                  <p className="text-xl font-bold">{trendInterpretation.weekAgo}</p>
+                </div>
+                <div className="bg-white/60 rounded-lg p-3 text-center">
+                  <p className="text-xs opacity-70">
+                    {language === 'hi' ? '2 दिन पहले' : '2 days ago'}
+                  </p>
+                  <p className="text-xl font-bold">{trendInterpretation.twoDaysAgo}</p>
+                </div>
+                <div className="bg-white/80 rounded-lg p-3 text-center border-2 border-current">
+                  <p className="text-xs opacity-70">
+                    {language === 'hi' ? 'आज' : 'Today'}
+                  </p>
+                  <p className="text-2xl font-bold">{trendInterpretation.latest}</p>
+                </div>
+              </div>
+
+              {/* Change indicators */}
+              <div className="mt-3 flex gap-4 text-sm">
+                <span>
+                  {language === 'hi' ? 'इस हफ्ते:' : 'This week:'}{' '}
+                  <strong className={trendInterpretation.weeklyChange >= 0 ? 'text-green-700' : 'text-red-700'}>
+                    {trendInterpretation.weeklyChange >= 0 ? '+' : ''}{trendInterpretation.weeklyChange}
+                  </strong>
+                </span>
+                <span>
+                  {language === 'hi' ? '2 दिन में:' : 'Last 2 days:'}{' '}
+                  <strong className={trendInterpretation.shortTermChange >= 0 ? 'text-green-700' : 'text-red-700'}>
+                    {trendInterpretation.shortTermChange >= 0 ? '+' : ''}{trendInterpretation.shortTermChange}
+                  </strong>
+                </span>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Health Trend Chart - Simplified */}
+      {healthData && healthData.history.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
           className="card mb-6"
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="section-header mb-0 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-slate-400" />
-              {healthData.count}-Day Health Trend
+              {language === 'hi' ? `${healthData.count} दिन का रुझान` : `${healthData.count}-Day Trend`}
             </h2>
           </div>
 
+          {/* Chart explanation */}
+          <p className="text-sm text-slate-500 mb-4">
+            {language === 'hi'
+              ? '📊 यह चार्ट दिखाता है कि आपकी फसल का स्वास्थ्य समय के साथ कैसे बदल रहा है। ऊपर जाना = अच्छा, नीचे जाना = ध्यान दें।'
+              : '📊 This chart shows how your crop health changed over time. Going up = good, going down = needs attention.'}
+          </p>
+
           <div className="chart-container">
             <Line data={chartData} options={chartOptions} />
+          </div>
+
+          {/* Simple legend explanation */}
+          <div className="mt-4 p-3 bg-slate-50 rounded-lg text-sm text-slate-600">
+            <p className="flex items-center gap-2">
+              <span className="w-4 h-1 bg-green-500 rounded"></span>
+              {language === 'hi'
+                ? 'हरी रेखा = फसल का स्वास्थ्य स्कोर (0-100)। 60 से ऊपर अच्छा है।'
+                : 'Green line = Crop health score (0-100). Above 60 is good.'}
+            </p>
           </div>
         </motion.div>
       )}

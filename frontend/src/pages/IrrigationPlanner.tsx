@@ -1,90 +1,77 @@
 /**
  * Green Sentinel - Irrigation Planner Page
  *
- * Smart irrigation recommendations based on REAL weather data.
+ * SIMPLIFIED version with honest data representation.
+ * Shows weather-based irrigation advice without fake precision.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Droplets,
   Calendar,
-  Clock,
-  TrendingDown,
   AlertCircle,
   CheckCircle,
-  MapPin,
-  BarChart3,
-  Leaf,
   CloudRain,
   RefreshCw,
   Settings,
+  Sun,
+  Thermometer,
+  Wind,
+  Info,
+  ArrowRight,
 } from 'lucide-react';
 import { useFarmStore } from '@/stores/farmStore';
+import { usePreferencesStore } from '@/stores/preferencesStore';
 import { fetchWeather, WeatherData } from '@/services/weatherService';
-import {
-  calculateIrrigation,
-  IrrigationData,
-} from '@/services/irrigationService';
 
-const stressColors: Record<string, string> = {
-  none: 'bg-green-100 text-green-800',
-  mild: 'bg-yellow-100 text-yellow-800',
-  moderate: 'bg-orange-100 text-orange-800',
-  severe: 'bg-red-100 text-red-800',
-  adequate: 'bg-green-100 text-green-800',
-  moderate_stress: 'bg-orange-100 text-orange-800',
-  severe_stress: 'bg-red-100 text-red-800',
-  waterlogged: 'bg-blue-100 text-blue-800',
+// Crop water needs (mm/day in peak season)
+const CROP_WATER_NEEDS: Record<string, { low: number; high: number; name: string }> = {
+  rice: { low: 6, high: 10, name: 'Rice' },
+  wheat: { low: 3, high: 5, name: 'Wheat' },
+  cotton: { low: 4, high: 7, name: 'Cotton' },
+  sugarcane: { low: 5, high: 8, name: 'Sugarcane' },
+  maize: { low: 4, high: 6, name: 'Maize' },
+  vegetables: { low: 3, high: 5, name: 'Vegetables' },
+  potato: { low: 3, high: 5, name: 'Potato' },
+  tomato: { low: 4, high: 6, name: 'Tomato' },
 };
 
-const stressLabels: Record<string, string> = {
-  none: 'No Stress',
-  mild: 'Mild Stress',
-  moderate: 'Moderate Stress',
-  severe: 'Severe Stress',
-  adequate: 'Adequate',
-  moderate_stress: 'Moderate Stress',
-  severe_stress: 'Severe Stress',
-  waterlogged: 'Waterlogged',
-};
+interface SimpleAdvice {
+  action: 'water_now' | 'water_soon' | 'wait' | 'skip_rain';
+  title: string;
+  message: string;
+  color: string;
+  bgColor: string;
+  icon: 'alert' | 'droplet' | 'check' | 'rain';
+}
 
 export default function IrrigationPlanner() {
   const { getCurrentFarm } = useFarmStore();
+  const { language } = usePreferencesStore();
   const farm = getCurrentFarm();
-  const [selectedZone, setSelectedZone] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [weather, setWeather] = useState<WeatherData | null>(null);
-  const [irrigationData, setIrrigationData] = useState<IrrigationData | null>(null);
-
-  // Settings
-  const [cropType, setCropType] = useState('vegetables');
-  const [soilType, setSoilType] = useState('loamy');
-  const [areaHectares, setAreaHectares] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
 
-  // Get farm coordinates or use default
+  // Settings
+  const [cropType, setCropType] = useState(farm?.cropType?.toLowerCase() || 'vegetables');
+  const [lastWateredDays, setLastWateredDays] = useState(2);
+
   const latitude = farm?.location?.latitude || 12.9716;
   const longitude = farm?.location?.longitude || 77.5946;
 
-  // Load data
+  // Load weather data
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
       const weatherData = await fetchWeather(latitude, longitude);
       setWeather(weatherData);
-
-      const irrigation = calculateIrrigation(
-        weatherData,
-        cropType,
-        soilType,
-        areaHectares
-      );
-      setIrrigationData(irrigation);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load data');
+      setError(err instanceof Error ? err.message : 'Failed to load weather');
     } finally {
       setLoading(false);
     }
@@ -92,36 +79,134 @@ export default function IrrigationPlanner() {
 
   useEffect(() => {
     loadData();
-  }, [latitude, longitude, cropType, soilType, areaHectares]);
+  }, [latitude, longitude]);
 
-  if (loading && !irrigationData) {
+  // Calculate simple advice based on weather
+  const advice = useMemo((): SimpleAdvice | null => {
+    if (!weather) return null;
+
+    const today = weather.daily[0];
+    const tomorrow = weather.daily[1];
+    const crop = CROP_WATER_NEEDS[cropType] || CROP_WATER_NEEDS.vegetables;
+
+    // Check for rain
+    const rainToday = today.precipitation > 5;
+    const rainTomorrow = tomorrow?.precipitation > 10 || tomorrow?.precipitationProbability > 70;
+    const recentRain = weather.daily.slice(0, 3).reduce((sum, d) => sum + d.precipitation, 0) > 20;
+
+    // Check temperature
+    const isHot = today.tempMax > 35;
+    const isVeryHot = today.tempMax > 40;
+
+    // Simple decision logic
+    if (rainToday || rainTomorrow) {
+      return {
+        action: 'skip_rain',
+        title: language === 'hi' ? 'बारिश की उम्मीद - पानी न दें' : 'Rain Expected - Skip Watering',
+        message: language === 'hi'
+          ? `${rainToday ? 'आज' : 'कल'} बारिश होने की संभावना है। पानी बचाएं।`
+          : `Rain ${rainToday ? 'today' : 'tomorrow'} will water your crops. Save water!`,
+        color: 'text-blue-700',
+        bgColor: 'bg-blue-50 border-blue-200',
+        icon: 'rain',
+      };
+    }
+
+    if (recentRain && lastWateredDays < 2) {
+      return {
+        action: 'wait',
+        title: language === 'hi' ? 'पर्याप्त नमी है' : 'Soil Has Enough Water',
+        message: language === 'hi'
+          ? 'हाल ही में बारिश हुई है। 1-2 दिन इंतजार करें।'
+          : 'Recent rain has watered the soil. Wait 1-2 days before watering.',
+        color: 'text-green-700',
+        bgColor: 'bg-green-50 border-green-200',
+        icon: 'check',
+      };
+    }
+
+    if (isVeryHot || (isHot && lastWateredDays >= 2)) {
+      return {
+        action: 'water_now',
+        title: language === 'hi' ? 'अभी पानी दें!' : 'Water Your Crops Now!',
+        message: language === 'hi'
+          ? `तापमान ${today.tempMax}°C है। पौधों को तुरंत पानी चाहिए।`
+          : `Temperature is ${today.tempMax}°C. Your plants need water immediately.`,
+        color: 'text-red-700',
+        bgColor: 'bg-red-50 border-red-200',
+        icon: 'alert',
+      };
+    }
+
+    if (lastWateredDays >= 3 || (lastWateredDays >= 2 && today.et0 > crop.high)) {
+      return {
+        action: 'water_soon',
+        title: language === 'hi' ? 'आज पानी देना चाहिए' : 'Water Today',
+        message: language === 'hi'
+          ? `${lastWateredDays} दिन से पानी नहीं दिया। आज शाम पानी दें।`
+          : `Last watered ${lastWateredDays} days ago. Water this evening.`,
+        color: 'text-orange-700',
+        bgColor: 'bg-orange-50 border-orange-200',
+        icon: 'droplet',
+      };
+    }
+
+    return {
+      action: 'wait',
+      title: language === 'hi' ? 'अभी पानी की जरूरत नहीं' : 'No Watering Needed Now',
+      message: language === 'hi'
+        ? 'मिट्टी में पर्याप्त नमी है। कल फिर जांचें।'
+        : 'Soil has adequate moisture. Check again tomorrow.',
+      color: 'text-green-700',
+      bgColor: 'bg-green-50 border-green-200',
+      icon: 'check',
+    };
+  }, [weather, cropType, lastWateredDays, language]);
+
+  // Weather summary
+  const weatherSummary = useMemo(() => {
+    if (!weather) return null;
+    const today = weather.daily[0];
+    const rainDays = weather.daily.slice(0, 5).filter(d => d.precipitation > 5).length;
+
+    return {
+      temp: Math.round(today.tempMax),
+      humidity: Math.round(weather.current.humidity),
+      windSpeed: Math.round(weather.current.windSpeed),
+      rainDays,
+      et0: today.et0.toFixed(1),
+    };
+  }, [weather]);
+
+  if (loading && !weather) {
     return (
       <div className="page-container">
         <div className="flex flex-col items-center justify-center h-64">
           <RefreshCw className="w-8 h-8 text-primary-500 animate-spin" />
-          <p className="mt-4 text-slate-600">Calculating irrigation needs...</p>
-          <p className="text-sm text-slate-400 mt-1">
-            Analyzing weather data and soil conditions
+          <p className="mt-4 text-slate-600">
+            {language === 'hi' ? 'मौसम डेटा लोड हो रहा है...' : 'Loading weather data...'}
           </p>
         </div>
       </div>
     );
   }
 
-  if (error && !irrigationData) {
+  if (error) {
     return (
       <div className="page-container">
         <div className="card bg-red-50 border-l-4 border-red-500">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-red-800">Failed to load irrigation data</h3>
+              <h3 className="font-semibold text-red-800">
+                {language === 'hi' ? 'डेटा लोड नहीं हुआ' : 'Failed to load data'}
+              </h3>
               <p className="text-red-600 text-sm mt-1">{error}</p>
               <button
                 onClick={loadData}
                 className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
               >
-                Retry
+                {language === 'hi' ? 'फिर से कोशिश करें' : 'Retry'}
               </button>
             </div>
           </div>
@@ -130,18 +215,16 @@ export default function IrrigationPlanner() {
     );
   }
 
-  if (!irrigationData || !weather) return null;
-
-  const data = irrigationData;
-
   return (
     <div className="page-container">
       {/* Header */}
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Irrigation Planner</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {language === 'hi' ? 'सिंचाई सलाह' : 'Irrigation Advice'}
+          </h1>
           <p className="text-slate-500 mt-1">
-            Smart irrigation recommendations for {farm?.name || 'your farm'}
+            {language === 'hi' ? 'मौसम के आधार पर सिंचाई की सलाह' : 'Weather-based watering recommendations'}
           </p>
         </div>
         <button
@@ -149,19 +232,8 @@ export default function IrrigationPlanner() {
           className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 bg-slate-100 rounded-lg"
         >
           <Settings className="w-4 h-4" />
-          Settings
+          {language === 'hi' ? 'सेटिंग्स' : 'Settings'}
         </button>
-      </div>
-
-      {/* Live Data Badge */}
-      <div className="mb-4 flex items-center gap-2 flex-wrap">
-        <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-          <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          Based on Live Weather Data
-        </span>
-        <span className="text-xs text-slate-500">
-          {cropType.charAt(0).toUpperCase() + cropType.slice(1)} • {soilType.charAt(0).toUpperCase() + soilType.slice(1)} soil • {areaHectares} ha
-        </span>
       </div>
 
       {/* Settings Panel */}
@@ -171,423 +243,228 @@ export default function IrrigationPlanner() {
           animate={{ opacity: 1, height: 'auto' }}
           className="card mb-6 bg-slate-50"
         >
-          <h3 className="font-semibold text-slate-900 mb-4">Irrigation Settings</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <h3 className="font-semibold text-slate-900 mb-4">
+            {language === 'hi' ? 'अपनी जानकारी दें' : 'Tell us about your farm'}
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-slate-600 mb-1">Crop Type</label>
+              <label className="block text-sm text-slate-600 mb-1">
+                {language === 'hi' ? 'फसल का प्रकार' : 'Crop Type'}
+              </label>
               <select
                 value={cropType}
                 onChange={(e) => setCropType(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary-500"
               >
-                <option value="rice">Rice</option>
-                <option value="wheat">Wheat</option>
-                <option value="cotton">Cotton</option>
-                <option value="sugarcane">Sugarcane</option>
-                <option value="maize">Maize</option>
-                <option value="potato">Potato</option>
-                <option value="tomato">Tomato</option>
-                <option value="onion">Onion</option>
-                <option value="vegetables">Vegetables</option>
+                {Object.entries(CROP_WATER_NEEDS).map(([key, val]) => (
+                  <option key={key} value={key}>{val.name}</option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-600 mb-1">Soil Type</label>
+              <label className="block text-sm text-slate-600 mb-1">
+                {language === 'hi' ? 'आखिरी बार पानी कब दिया?' : 'When did you last water?'}
+              </label>
               <select
-                value={soilType}
-                onChange={(e) => setSoilType(e.target.value)}
+                value={lastWateredDays}
+                onChange={(e) => setLastWateredDays(parseInt(e.target.value))}
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary-500"
               >
-                <option value="sandy">Sandy</option>
-                <option value="loamy">Loamy</option>
-                <option value="clay">Clay</option>
-                <option value="silty">Silty</option>
+                <option value={0}>{language === 'hi' ? 'आज' : 'Today'}</option>
+                <option value={1}>{language === 'hi' ? 'कल' : 'Yesterday'}</option>
+                <option value={2}>{language === 'hi' ? '2 दिन पहले' : '2 days ago'}</option>
+                <option value={3}>{language === 'hi' ? '3 दिन पहले' : '3 days ago'}</option>
+                <option value={4}>{language === 'hi' ? '4+ दिन पहले' : '4+ days ago'}</option>
               </select>
-            </div>
-            <div>
-              <label className="block text-sm text-slate-600 mb-1">Area (hectares)</label>
-              <input
-                type="number"
-                value={areaHectares}
-                onChange={(e) => setAreaHectares(Math.max(0.1, parseFloat(e.target.value) || 1))}
-                min="0.1"
-                step="0.5"
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary-500"
-              />
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* Recommendation Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className={`card mb-6 ${
-          data.recommendation.action === 'irrigate_now'
-            ? 'bg-red-50 border-l-4 border-red-500'
-            : data.recommendation.action === 'irrigate_soon'
-            ? 'bg-amber-50 border-l-4 border-amber-500'
-            : data.recommendation.action === 'skip_rain_expected'
-            ? 'bg-blue-50 border-l-4 border-blue-500'
-            : 'bg-green-50 border-l-4 border-green-500'
-        }`}
-      >
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            {data.recommendation.action === 'irrigate_now' ? (
-              <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />
-            ) : data.recommendation.action === 'skip_rain_expected' ? (
-              <CloudRain className="w-6 h-6 text-blue-600 flex-shrink-0" />
-            ) : data.recommendation.action === 'wait' ? (
-              <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
-            ) : (
-              <Droplets className="w-6 h-6 text-amber-600 flex-shrink-0" />
-            )}
-            <div>
-              <h3 className={`font-semibold ${
-                data.recommendation.action === 'irrigate_now' ? 'text-red-800' :
-                data.recommendation.action === 'skip_rain_expected' ? 'text-blue-800' :
-                data.recommendation.action === 'wait' ? 'text-green-800' :
-                'text-amber-800'
-              }`}>
-                {data.recommendation.action === 'irrigate_now' ? 'Immediate Irrigation Needed' :
-                 data.recommendation.action === 'irrigate_soon' ? 'Irrigation Recommended Soon' :
-                 data.recommendation.action === 'skip_rain_expected' ? 'Skip Irrigation - Rain Expected' :
-                 'Adequate Moisture'}
-              </h3>
-              <p className="text-slate-600 mt-1">{data.recommendation.reason}</p>
+      {/* MAIN ADVICE CARD */}
+      {advice && (
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className={`rounded-2xl p-6 mb-6 border-2 ${advice.bgColor}`}
+        >
+          <div className="flex items-start gap-4">
+            <div className={`p-3 rounded-full ${advice.action === 'water_now' ? 'bg-red-200' : advice.action === 'skip_rain' ? 'bg-blue-200' : advice.action === 'water_soon' ? 'bg-orange-200' : 'bg-green-200'}`}>
+              {advice.icon === 'alert' && <AlertCircle className="w-8 h-8 text-red-600" />}
+              {advice.icon === 'droplet' && <Droplets className="w-8 h-8 text-orange-600" />}
+              {advice.icon === 'check' && <CheckCircle className="w-8 h-8 text-green-600" />}
+              {advice.icon === 'rain' && <CloudRain className="w-8 h-8 text-blue-600" />}
+            </div>
+            <div className="flex-1">
+              <h2 className={`text-2xl font-bold ${advice.color}`}>{advice.title}</h2>
+              <p className="text-slate-600 mt-2 text-lg">{advice.message}</p>
             </div>
           </div>
 
-          {data.recommendation.waterNeeded > 0 && (
-            <div className="text-right">
-              <p className="text-2xl font-bold text-slate-900">
-                {(data.recommendation.waterNeeded / 1000).toFixed(0)}K L
+          {/* Best time to water */}
+          {(advice.action === 'water_now' || advice.action === 'water_soon') && (
+            <div className="mt-4 p-3 bg-white/60 rounded-xl">
+              <p className="text-slate-700 font-medium">
+                {language === 'hi' ? '⏰ सबसे अच्छा समय: सुबह 6-8 बजे या शाम 5-7 बजे' : '⏰ Best time: 6-8 AM or 5-7 PM'}
               </p>
-              <p className="text-slate-500 text-sm">Water Needed</p>
+              <p className="text-sm text-slate-500 mt-1">
+                {language === 'hi' ? 'दोपहर में पानी देने से बचें - पानी जल्दी सूख जाता है' : 'Avoid watering at noon - water evaporates quickly'}
+              </p>
             </div>
           )}
-        </div>
-
-        {data.recommendation.waterNeeded > 0 && (
-          <div className="mt-4 pt-4 border-t border-slate-200 flex items-center gap-6 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-slate-400" />
-              <span className="text-sm text-slate-600">
-                Best time: <strong>{data.recommendation.optimalTime}</strong>
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4 text-slate-400" />
-              <span className="text-sm text-slate-600">
-                Duration: <strong>{data.recommendation.duration} minutes</strong>
-              </span>
-            </div>
-          </div>
-        )}
-      </motion.div>
-
-      {/* Soil Moisture & Water Balance */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="card"
-        >
-          <h2 className="section-header flex items-center gap-2">
-            <Droplets className="w-5 h-5 text-slate-400" />
-            Estimated Soil Moisture
-          </h2>
-
-          <div className="mb-4">
-            <div className="flex justify-between mb-2">
-              <span className="text-sm text-slate-600">Current Level</span>
-              <span className={`text-sm font-medium ${
-                data.soilMoisture.status === 'adequate' ? 'text-green-600' :
-                data.soilMoisture.status === 'moderate_stress' ? 'text-amber-600' :
-                'text-red-600'
-              }`}>
-                {data.soilMoisture.current}%
-              </span>
-            </div>
-
-            {/* Moisture Bar */}
-            <div className="relative h-4 bg-slate-200 rounded-full overflow-hidden">
-              {/* Optimal range indicator */}
-              <div
-                className="absolute h-full bg-green-200"
-                style={{
-                  left: `${data.soilMoisture.optimalRange.min}%`,
-                  width: `${data.soilMoisture.optimalRange.max - data.soilMoisture.optimalRange.min}%`,
-                }}
-              />
-              {/* Current level */}
-              <div
-                className={`h-full rounded-full transition-all ${
-                  data.soilMoisture.status === 'adequate' ? 'bg-green-500' :
-                  data.soilMoisture.status === 'moderate_stress' ? 'bg-amber-500' :
-                  'bg-red-500'
-                }`}
-                style={{ width: `${data.soilMoisture.current}%` }}
-              />
-            </div>
-
-            <div className="flex justify-between mt-1 text-xs text-slate-500">
-              <span>Wilting ({data.soilMoisture.wiltingPoint}%)</span>
-              <span>Optimal</span>
-              <span>Field Cap. ({data.soilMoisture.fieldCapacity}%)</span>
-            </div>
-          </div>
-
-          <div className={`rounded-lg p-3 ${stressColors[data.soilMoisture.status]}`}>
-            <p className="font-medium">{stressLabels[data.soilMoisture.status]}</p>
-            <p className="text-xs mt-1 opacity-75">Estimated from weather and ET₀</p>
-          </div>
         </motion.div>
+      )}
 
+      {/* Weather Info Cards */}
+      {weatherSummary && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="card p-4 text-center">
+            <Thermometer className="w-8 h-8 text-orange-500 mx-auto mb-2" />
+            <p className="text-2xl font-bold text-slate-900">{weatherSummary.temp}°C</p>
+            <p className="text-sm text-slate-500">{language === 'hi' ? 'आज का तापमान' : 'Today\'s Temp'}</p>
+          </div>
+          <div className="card p-4 text-center">
+            <Droplets className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+            <p className="text-2xl font-bold text-slate-900">{weatherSummary.humidity}%</p>
+            <p className="text-sm text-slate-500">{language === 'hi' ? 'नमी' : 'Humidity'}</p>
+          </div>
+          <div className="card p-4 text-center">
+            <Wind className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+            <p className="text-2xl font-bold text-slate-900">{weatherSummary.windSpeed}</p>
+            <p className="text-sm text-slate-500">{language === 'hi' ? 'हवा (km/h)' : 'Wind (km/h)'}</p>
+          </div>
+          <div className="card p-4 text-center">
+            <CloudRain className="w-8 h-8 text-blue-500 mx-auto mb-2" />
+            <p className="text-2xl font-bold text-slate-900">{weatherSummary.rainDays}</p>
+            <p className="text-sm text-slate-500">{language === 'hi' ? 'बारिश के दिन (5 में)' : 'Rain days (next 5)'}</p>
+          </div>
+        </div>
+      )}
+
+      {/* 5-Day Forecast */}
+      {weather && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="card"
+          className="card mb-6"
         >
           <h2 className="section-header flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-slate-400" />
-            Water Balance (7 days)
+            <Calendar className="w-5 h-5 text-slate-400" />
+            {language === 'hi' ? '5 दिन का मौसम' : '5-Day Weather'}
           </h2>
 
           <div className="space-y-3">
-            <BalanceRow
-              label="Rainfall"
-              value={data.waterBalance.rainfall}
-              color="bg-blue-500"
-              icon={CloudRain}
-            />
-            <BalanceRow
-              label="Irrigation"
-              value={data.waterBalance.irrigation}
-              color="bg-cyan-500"
-              icon={Droplets}
-            />
-            <BalanceRow
-              label="Evapotranspiration"
-              value={-data.waterBalance.evapotranspiration}
-              color="bg-orange-500"
-              icon={TrendingDown}
-            />
-          </div>
+            {weather.daily.slice(0, 5).map((day, index) => {
+              const date = new Date();
+              date.setDate(date.getDate() + index);
+              const isToday = index === 0;
+              const hasRain = day.precipitation > 5 || day.precipitationProbability > 70;
+              const isHot = day.tempMax > 35;
 
-          <div className="mt-4 pt-3 border-t border-slate-100">
-            <div className="flex justify-between">
-              <span className="text-slate-600">Net Balance</span>
-              <span className={`font-bold ${
-                data.waterBalance.deficit > 0 ? 'text-red-600' : 'text-green-600'
-              }`}>
-                {data.waterBalance.deficit > 0 ? `-${data.waterBalance.deficit}` : `+${data.waterBalance.surplus}`} mm
-              </span>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Zone Status */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="card mb-6"
-      >
-        <h2 className="section-header flex items-center gap-2">
-          <MapPin className="w-5 h-5 text-slate-400" />
-          Zone-wise Status (Estimated)
-        </h2>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {data.zones
-            .sort((a, b) => a.priority - b.priority)
-            .map((zone) => (
-              <button
-                key={zone.zoneId}
-                onClick={() => setSelectedZone(zone.zoneId === selectedZone ? null : zone.zoneId)}
-                className={`p-4 rounded-xl border-2 transition-all text-left ${
-                  selectedZone === zone.zoneId
-                    ? 'border-primary-500 bg-primary-50'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-slate-900">{zone.zoneName}</span>
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${stressColors[zone.stressLevel]}`}>
-                    P{zone.priority}
-                  </span>
-                </div>
-
-                {/* Moisture gauge */}
-                <div className="h-2 bg-slate-200 rounded-full overflow-hidden mb-2">
-                  <div
-                    className={`h-full transition-all ${
-                      zone.stressLevel === 'severe' ? 'bg-red-500' :
-                      zone.stressLevel === 'moderate' ? 'bg-orange-500' :
-                      zone.stressLevel === 'mild' ? 'bg-yellow-500' :
-                      'bg-green-500'
-                    }`}
-                    style={{ width: `${zone.moistureLevel}%` }}
-                  />
-                </div>
-
-                <p className="text-sm text-slate-600">
-                  Moisture: <strong>{zone.moistureLevel}%</strong>
-                </p>
-
-                {zone.waterNeeded > 0 && (
-                  <p className="text-xs text-slate-500 mt-1">
-                    Needs {(zone.waterNeeded / 1000).toFixed(0)}K L
-                  </p>
-                )}
-              </button>
-            ))}
-        </div>
-      </motion.div>
-
-      {/* Weekly Schedule */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="card mb-6"
-      >
-        <h2 className="section-header flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-slate-400" />
-          Recommended Schedule
-        </h2>
-
-        <div className="space-y-3">
-          {data.schedule.map((item, index) => {
-            const date = new Date(item.date);
-            const isToday = date.toDateString() === new Date().toDateString();
-
-            return (
-              <div
-                key={index}
-                className={`flex items-center justify-between p-3 rounded-lg ${
-                  item.status === 'skipped'
-                    ? 'bg-slate-100'
-                    : isToday
-                    ? 'bg-primary-50 border border-primary-200'
-                    : 'bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  {item.status === 'completed' ? (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
-                  ) : item.status === 'skipped' ? (
-                    <CloudRain className="w-5 h-5 text-blue-500" />
-                  ) : (
-                    <Clock className="w-5 h-5 text-primary-500" />
-                  )}
-
-                  <div>
-                    <p className="font-medium text-slate-900">
-                      {isToday ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      {item.time && ` at ${item.time}`}
-                    </p>
-                    {item.status === 'skipped' ? (
-                      <p className="text-sm text-slate-500">{item.skipReason}</p>
+              return (
+                <div
+                  key={index}
+                  className={`flex items-center justify-between p-3 rounded-lg ${
+                    isToday ? 'bg-green-50 border border-green-200' : 'bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {hasRain ? (
+                      <CloudRain className="w-6 h-6 text-blue-500" />
                     ) : (
-                      <p className="text-sm text-slate-500">
-                        Zones: {item.zones.map(z => data.zones.find(zone => zone.zoneId === z)?.zoneName).join(', ') || 'All'}
+                      <Sun className="w-6 h-6 text-yellow-500" />
+                    )}
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {isToday
+                          ? (language === 'hi' ? 'आज' : 'Today')
+                          : date.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', {
+                              weekday: 'short',
+                              day: 'numeric',
+                            })}
                       </p>
+                      <p className="text-sm text-slate-500">
+                        {Math.round(day.tempMin)}° - {Math.round(day.tempMax)}°
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    {hasRain ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                        <CloudRain className="w-4 h-4" />
+                        {Math.round(day.precipitation)}mm
+                      </span>
+                    ) : isHot ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">
+                        {language === 'hi' ? 'गर्म' : 'Hot'}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-slate-500">
+                        {language === 'hi' ? 'साफ' : 'Clear'}
+                      </span>
                     )}
                   </div>
                 </div>
+              );
+            })}
+          </div>
+        </motion.div>
+      )}
 
-                {item.waterAmount > 0 && (
-                  <div className="text-right">
-                    <p className="font-semibold text-slate-900">
-                      {(item.waterAmount / 1000).toFixed(0)}K L
-                    </p>
-                    <p className="text-xs text-slate-500">{item.duration} min</p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </motion.div>
-
-      {/* Water Savings */}
+      {/* Water Saving Tips */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="card bg-gradient-to-br from-green-500 to-green-600 text-white"
+        className="card bg-blue-50 border border-blue-200"
       >
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Leaf className="w-5 h-5" />
-          Estimated Water Savings with Smart Irrigation
+        <h2 className="section-header flex items-center gap-2 text-blue-800">
+          <Info className="w-5 h-5 text-blue-600" />
+          {language === 'hi' ? 'पानी बचाने के टिप्स' : 'Water Saving Tips'}
         </h2>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div>
-            <p className="text-3xl font-bold">{data.savings.percentageVsTraditional}%</p>
-            <p className="text-green-200 text-sm">vs Traditional</p>
-          </div>
-          <div>
-            <p className="text-3xl font-bold">{(data.savings.thisWeek / 1000).toFixed(0)}K</p>
-            <p className="text-green-200 text-sm">Liters this week</p>
-          </div>
-          <div>
-            <p className="text-3xl font-bold">{(data.savings.thisSeason / 1000).toFixed(0)}K</p>
-            <p className="text-green-200 text-sm">Liters this season</p>
-          </div>
-          <div>
-            <p className="text-3xl font-bold">₹{data.savings.costSavings}</p>
-            <p className="text-green-200 text-sm">Cost saved/month</p>
-          </div>
-        </div>
+        <ul className="space-y-2 text-blue-700">
+          <li className="flex items-start gap-2">
+            <ArrowRight className="w-4 h-4 mt-1 flex-shrink-0" />
+            <span>
+              {language === 'hi'
+                ? 'सुबह जल्दी या शाम को पानी दें - कम पानी उड़ता है'
+                : 'Water early morning or evening - less evaporation'}
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <ArrowRight className="w-4 h-4 mt-1 flex-shrink-0" />
+            <span>
+              {language === 'hi'
+                ? 'पौधों की जड़ों के पास पानी दें, पत्तों पर नहीं'
+                : 'Water at the roots, not on leaves'}
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <ArrowRight className="w-4 h-4 mt-1 flex-shrink-0" />
+            <span>
+              {language === 'hi'
+                ? 'बारिश होने पर सिंचाई न करें - पानी बचाएं'
+                : 'Skip irrigation when rain is expected'}
+            </span>
+          </li>
+          <li className="flex items-start gap-2">
+            <ArrowRight className="w-4 h-4 mt-1 flex-shrink-0" />
+            <span>
+              {language === 'hi'
+                ? 'मल्चिंग करें - मिट्टी में नमी बनी रहती है'
+                : 'Use mulch - it helps soil retain moisture'}
+            </span>
+          </li>
+        </ul>
       </motion.div>
-    </div>
-  );
-}
 
-// =============================================================================
-// Sub-components
-// =============================================================================
-
-function BalanceRow({
-  label,
-  value,
-  color,
-  icon: Icon,
-}: {
-  label: string;
-  value: number;
-  color: string;
-  icon: typeof Droplets;
-}) {
-  const isNegative = value < 0;
-  const absValue = Math.abs(value);
-  const maxValue = 50;
-
-  return (
-    <div className="flex items-center gap-3">
-      <Icon className={`w-4 h-4 ${isNegative ? 'text-orange-500' : 'text-blue-500'}`} />
-      <div className="flex-1">
-        <div className="flex justify-between mb-1">
-          <span className="text-sm text-slate-600">{label}</span>
-          <span className="text-sm font-medium text-slate-900">
-            {isNegative ? '-' : '+'}{absValue} mm
-          </span>
-        </div>
-        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full ${color}`}
-            style={{ width: `${Math.min(100, (absValue / maxValue) * 100)}%` }}
-          />
-        </div>
-      </div>
+      {/* Honest Disclaimer */}
+      <p className="text-xs text-slate-400 text-center mt-6">
+        {language === 'hi'
+          ? '⚠️ यह सलाह मौसम के आधार पर है। वास्तविक मिट्टी की नमी जांचें।'
+          : '⚠️ This advice is based on weather data. Check actual soil moisture for best results.'}
+      </p>
     </div>
   );
 }
