@@ -1791,20 +1791,14 @@ export class GreenSentinelStack extends cdk.Stack {
                 return m ? JSON.parse(m[0]) : { fire:{detected:false,confidence:0,description:null}, human:{detected:false,confidence:0,count:0,activity:null,suspicious:false}, animal:{detected:false,confidence:0,species:[],description:null}, overallThreat:'none', recommendations:[] };
               };
 
-              // ── Cost-optimised two-stage analysis ──────────────────────────
-              // Stage 1: Haiku  ~$0.0003/call — fast screening (~3s)
-              // Stage 2: Sonnet ~$0.007/call  — confirm only if Haiku flags a threat
-              // Typical saving: 85–90% vs always using Sonnet
+              // ── Direct Sonnet analysis ──────────────────────────────────────
+              // Haiku screening was suppressing real detections (fire, smoke) due to
+              // 256-token truncation causing JSON parse failures → default 'none'.
+              // At 30s cooldown intervals Sonnet cost is negligible (~$0.007/scan).
               try {
-                const haikuAnalysis = await callBedrock('anthropic.claude-3-haiku-20240307-v1:0', imageData, 256);
-                const needsConfirmation = haikuAnalysis.overallThreat !== 'none' && haikuAnalysis.overallThreat !== 'low';
+                const analysis = await callBedrock('apac.anthropic.claude-3-5-sonnet-20241022-v2:0', imageData, 512);
 
-                // Escalate to Sonnet only when Haiku detects a real threat
-                const analysis = needsConfirmation
-                  ? await callBedrock('apac.anthropic.claude-3-5-sonnet-20241022-v2:0', imageData, 512)
-                  : haikuAnalysis;
-
-                console.log('Model used:', needsConfirmation ? 'haiku+sonnet' : 'haiku-only', '| threat:', analysis.overallThreat);
+                console.log('Model used: sonnet | threat:', analysis.overallThreat);
 
                 // ── Auto-save alert + SMS when called from edge agent ──
                 const isThreat = analysis.overallThreat !== 'none' && analysis.overallThreat !== 'low';
