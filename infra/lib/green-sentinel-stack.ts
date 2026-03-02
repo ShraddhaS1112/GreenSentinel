@@ -1787,7 +1787,7 @@ export class GreenSentinelStack extends cdk.Stack {
                   })
                 }));
                 const text = JSON.parse(new TextDecoder().decode(res.body)).content?.[0]?.text || '{}';
-                const m = text.match(/\{[\s\S]*\}/);
+                const _f = text.indexOf('{'); const _l = text.lastIndexOf('}'); const m = _f !== -1 && _l > _f ? [text.slice(_f, _l + 1)] : null;
                 return m ? JSON.parse(m[0]) : { fire:{detected:false,confidence:0,description:null}, human:{detected:false,confidence:0,count:0,activity:null,suspicious:false}, animal:{detected:false,confidence:0,species:[],description:null}, overallThreat:'none', recommendations:[] };
               };
 
