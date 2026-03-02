@@ -1703,6 +1703,68 @@ export class GreenSentinelStack extends cdk.Stack {
             }
 
             // =====================================================================
+            // AI Threat Detection - Fire, Human Intrusion, Animal Detection
+            // =====================================================================
+            if (path.startsWith('/threat-detect') && httpMethod === 'POST') {
+              const { BedrockRuntimeClient, InvokeModelCommand } = require('@aws-sdk/client-bedrock-runtime');
+              const bedrockClient = new BedrockRuntimeClient({ region: 'ap-south-1' });
+
+              const body = JSON.parse(event.body || '{}');
+              const { farmId, imageData } = body;
+
+              if (!farmId || !imageData) {
+                return { statusCode: 400, headers, body: JSON.stringify({ error: 'farmId and imageData required' }) };
+              }
+
+              const threatPrompt = 'You are an AI security system for Indian agricultural farms. Analyze this image for security threats. Be precise and conservative — only report threats you are confident about. False alarms are costly for farmers.\n\nIMPORTANT: Respond ONLY in valid JSON. All text MUST be in English.\n\n{\n  "fire": {\n    "detected": true_or_false,\n    "confidence": 0_to_100,\n    "description": "what you see or null"\n  },\n  "human": {\n    "detected": true_or_false,\n    "confidence": 0_to_100,\n    "count": number_of_people,\n    "activity": "what they are doing or null",\n    "suspicious": true_or_false\n  },\n  "animal": {\n    "detected": true_or_false,\n    "confidence": 0_to_100,\n    "species": ["list","of","identified","animals"],\n    "description": "location and behavior or null"\n  },\n  "overallThreat": "none_or_low_or_medium_or_high_or_critical",\n  "recommendations": ["action 1", "action 2"]\n}\n\nFire: flames, smoke, orange/red glow, smoldering. Day or night.\nHuman: people near field boundaries, crop storage, fences. Workers in daylight are normal — strangers at night or near storage are suspicious.\nAnimal: cattle, nilgai, wild boar, monkeys, elephants, birds. Focus on crop-damaging animals in the field.\n\nIf image is unclear or too dark: set all detected to false, overallThreat to "none".';
+
+              try {
+                const bedrockInput = {
+                  modelId: 'anthropic.claude-3-sonnet-20240229-v1:0',
+                  contentType: 'application/json',
+                  accept: 'application/json',
+                  body: JSON.stringify({
+                    anthropic_version: 'bedrock-2023-05-31',
+                    max_tokens: 512,
+                    messages: [{
+                      role: 'user',
+                      content: [
+                        {
+                          type: 'image',
+                          source: {
+                            type: 'base64',
+                            media_type: 'image/jpeg',
+                            data: imageData
+                          }
+                        },
+                        { type: 'text', text: threatPrompt }
+                      ]
+                    }]
+                  })
+                };
+
+                const bedrockResponse = await bedrockClient.send(new InvokeModelCommand(bedrockInput));
+                const responseBody = JSON.parse(new TextDecoder().decode(bedrockResponse.body));
+                const analysisText = responseBody.content?.[0]?.text || '{}';
+
+                // Extract JSON from response
+                const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+                const analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : {
+                  fire: { detected: false, confidence: 0, description: null },
+                  human: { detected: false, confidence: 0, count: 0, activity: null, suspicious: false },
+                  animal: { detected: false, confidence: 0, species: [], description: null },
+                  overallThreat: 'none',
+                  recommendations: []
+                };
+
+                return { statusCode: 200, headers, body: JSON.stringify({ farmId, analysis, analyzedAt: new Date().toISOString() }) };
+              } catch (err) {
+                console.error('Threat detection error:', err);
+                return { statusCode: 500, headers, body: JSON.stringify({ error: 'Threat analysis failed' }) };
+              }
+            }
+
+            // =====================================================================
             // Irrigation Planner - Smart irrigation recommendations
             // =====================================================================
             if (path.startsWith('/irrigation')) {
@@ -1839,6 +1901,7 @@ export class GreenSentinelStack extends cdk.Stack {
     const diseaseScanResource = this.api.root.addResource('disease-scan');
     const diseaseScanUploadResource = diseaseScanResource.addResource('upload-url');
     const diseaseScanAnalyzeResource = diseaseScanResource.addResource('analyze');
+    const threatDetectResource = this.api.root.addResource('threat-detect');
     const irrigationResource = this.api.root.addResource('irrigation');
 
     const apiIntegration = new apigateway.LambdaIntegration(apiHandler);
@@ -1870,6 +1933,9 @@ export class GreenSentinelStack extends cdk.Stack {
     diseaseScanResource.addMethod('GET', apiIntegration); // Get scan history
     diseaseScanUploadResource.addMethod('GET', apiIntegration); // Get upload URL
     diseaseScanAnalyzeResource.addMethod('POST', apiIntegration); // Analyze image
+
+    // AI Threat detection (fire, human intrusion, animal)
+    threatDetectResource.addMethod('POST', apiIntegration);
 
     // Irrigation routes
     irrigationResource.addMethod('GET', apiIntegration); // Get irrigation recommendations

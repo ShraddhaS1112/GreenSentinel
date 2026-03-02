@@ -5,24 +5,28 @@
  */
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   User,
   Bell,
   Globe,
   Shield,
   LogOut,
-  ChevronRight,
   Volume2,
   MessageSquare,
   AlertTriangle,
   Sparkles,
   Leaf,
+  ChevronDown,
+  Save,
+  Info,
+  Lock,
 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useFarmStore } from '@/stores/farmStore';
 import { usePreferencesStore, useTranslation, type UIMode, type Language } from '@/stores/preferencesStore';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import * as api from '@/services/apiService';
 import toast from 'react-hot-toast';
 
 const languages: { code: Language; name: string; native: string }[] = [
@@ -37,11 +41,11 @@ const languages: { code: Language; name: string; native: string }[] = [
 
 export default function Settings() {
   const { user, updateLanguage, logout } = useAuthStore();
-  const { getCurrentFarm } = useFarmStore();
+  const { getCurrentFarm, updateFarm: updateFarmInStore } = useFarmStore();
   const { uiMode, setUIMode, setLanguage: setPrefLanguage } = usePreferencesStore();
   const { t } = useTranslation();
   const farm = getCurrentFarm();
-  const isMobile = useIsMobile(); // Mode toggle only shown on mobile
+  const isMobile = useIsMobile();
 
   const [voiceEnabled, setVoiceEnabled] = useState(
     user?.alertPreferences?.voiceEnabled ?? true
@@ -49,6 +53,15 @@ export default function Settings() {
   const [textEnabled, setTextEnabled] = useState(
     user?.alertPreferences?.textEnabled ?? true
   );
+
+  // Editable alert thresholds
+  const [localThresholds, setLocalThresholds] = useState({
+    fire: farm?.alertThresholds?.fire ?? 80,
+    human: farm?.alertThresholds?.human ?? 80,
+    animal: farm?.alertThresholds?.animal ?? 75,
+  });
+  const [savingThresholds, setSavingThresholds] = useState(false);
+  const [showScoreBasis, setShowScoreBasis] = useState(false);
 
   const handleModeChange = (mode: UIMode) => {
     setUIMode(mode);
@@ -66,6 +79,20 @@ export default function Settings() {
     if (confirm('Are you sure you want to log out?')) {
       logout();
       toast.success('Logged out successfully');
+    }
+  };
+
+  const handleSaveThresholds = async () => {
+    if (!farm?.farmId) return;
+    setSavingThresholds(true);
+    try {
+      await api.updateFarm(farm.farmId, { alertThresholds: localThresholds } as any);
+      updateFarmInStore(farm.farmId, { alertThresholds: localThresholds } as any);
+      toast.success('Alert thresholds saved');
+    } catch {
+      toast.error('Failed to save thresholds');
+    } finally {
+      setSavingThresholds(false);
     }
   };
 
@@ -266,26 +293,87 @@ export default function Settings() {
           Alert Thresholds
         </h2>
         <p className="text-sm text-slate-500 mb-4">
-          Minimum confidence required to trigger alerts
+          Minimum AI confidence required to trigger an alert
         </p>
 
-        <div className="space-y-4">
+        <div className="space-y-5">
           <ThresholdSlider
-            label="Fire Detection"
-            value={farm?.alertThresholds.fire || 80}
+            label="🔥 Fire Detection"
+            value={localThresholds.fire}
             color="red"
+            onChange={v => setLocalThresholds(t => ({ ...t, fire: v }))}
           />
           <ThresholdSlider
-            label="Human Detection"
-            value={farm?.alertThresholds.human || 80}
+            label="👤 Human Intrusion"
+            value={localThresholds.human}
             color="orange"
+            onChange={v => setLocalThresholds(t => ({ ...t, human: v }))}
           />
           <ThresholdSlider
-            label="Animal Detection"
-            value={farm?.alertThresholds.animal || 75}
+            label="🐗 Animal Intrusion"
+            value={localThresholds.animal}
             color="yellow"
+            onChange={v => setLocalThresholds(t => ({ ...t, animal: v }))}
           />
         </div>
+
+        <button
+          onClick={handleSaveThresholds}
+          disabled={savingThresholds}
+          className="mt-5 w-full flex items-center justify-center gap-2 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 text-white rounded-lg font-medium text-sm transition-colors"
+        >
+          <Save className="w-4 h-4" />
+          {savingThresholds ? 'Saving...' : 'Save Thresholds'}
+        </button>
+
+        {/* Score calculation basis */}
+        <button
+          onClick={() => setShowScoreBasis(!showScoreBasis)}
+          className="mt-4 w-full flex items-center justify-between text-sm text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          <span className="flex items-center gap-1.5">
+            <Info className="w-4 h-4" />
+            How are AI scores calculated?
+          </span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${showScoreBasis ? 'rotate-180' : ''}`} />
+        </button>
+
+        <AnimatePresence>
+          {showScoreBasis && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 p-4 bg-slate-50 rounded-lg text-xs text-slate-600 space-y-3">
+                <div>
+                  <p className="font-semibold text-slate-800 mb-1">NDVI (Vegetation Index)</p>
+                  <p className="font-mono bg-white px-2 py-1 rounded text-slate-700 mb-1">NDVI = (NIR − Red) / (NIR + Red)</p>
+                  <p>Derived from Sentinel-2 satellite Band 8 (NIR) and Band 4 (Red). Range: −1 to +1.</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800 mb-1">Crop Health Score (0–100)</p>
+                  <div className="space-y-0.5">
+                    <p>NDVI ≥ 0.6 → <span className="text-green-600 font-medium">Excellent (95)</span></p>
+                    <p>NDVI ≥ 0.45 → <span className="text-lime-600 font-medium">Good (80)</span></p>
+                    <p>NDVI ≥ 0.3 → <span className="text-yellow-600 font-medium">Moderate (60)</span></p>
+                    <p>NDVI ≥ 0.15 → <span className="text-orange-600 font-medium">Stressed (40)</span></p>
+                    <p>NDVI &lt; 0.15 → <span className="text-red-600 font-medium">Poor (20)</span></p>
+                  </div>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800 mb-1">Disease Risk Score</p>
+                  <p>Weighted weather model: Humidity (35%) + Temperature match (30%) + Precipitation (25%) + Wind (10%)</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-800 mb-1">AI Threat Detection</p>
+                  <p>Bedrock Claude Vision model analyzes each camera frame. Score = model confidence (0–100%). Your threshold controls when an alert fires.</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* Security */}
@@ -300,13 +388,13 @@ export default function Settings() {
           Security
         </h2>
 
-        <button className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-50 transition-colors">
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50">
+          <Lock className="w-5 h-5 text-slate-400 flex-shrink-0" />
           <div>
-            <p className="font-medium text-slate-900">Change Phone Number</p>
-            <p className="text-sm text-slate-500">Update your login number</p>
+            <p className="font-medium text-slate-900">Login Phone Number</p>
+            <p className="text-sm text-slate-500">+91 {user?.phoneNumber || '—'} · Contact support to change</p>
           </div>
-          <ChevronRight className="w-5 h-5 text-slate-400" />
-        </button>
+        </div>
       </motion.div>
 
       {/* Logout */}
@@ -378,15 +466,17 @@ function ThresholdSlider({
   label,
   value,
   color,
+  onChange,
 }: {
   label: string;
   value: number;
   color: 'red' | 'orange' | 'yellow';
+  onChange: (value: number) => void;
 }) {
   const colorClasses = {
-    red: 'bg-red-500',
-    orange: 'bg-orange-500',
-    yellow: 'bg-yellow-500',
+    red: 'accent-red-500',
+    orange: 'accent-orange-500',
+    yellow: 'accent-yellow-500',
   };
 
   return (
@@ -395,11 +485,17 @@ function ThresholdSlider({
         <span className="text-sm font-medium text-slate-700">{label}</span>
         <span className="text-sm font-bold text-slate-900">{value}%</span>
       </div>
-      <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-        <div
-          className={`h-full ${colorClasses[color]} transition-all`}
-          style={{ width: `${value}%` }}
-        />
+      <input
+        type="range"
+        min={50}
+        max={99}
+        value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className={`w-full h-2 rounded-full cursor-pointer ${colorClasses[color]}`}
+      />
+      <div className="flex justify-between text-xs text-slate-400 mt-1">
+        <span>50% (sensitive)</span>
+        <span>99% (strict)</span>
       </div>
     </div>
   );

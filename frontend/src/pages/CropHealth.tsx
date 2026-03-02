@@ -637,7 +637,7 @@ export default function CropHealth() {
         </motion.div>
       )}
 
-      {/* Info card */}
+      {/* Score Calculation Basis */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -646,18 +646,41 @@ export default function CropHealth() {
       >
         <div className="flex gap-3">
           <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <h3 className="font-medium text-blue-900">About NDVI Health Score</h3>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-medium text-blue-900">How Health Score is Calculated</h3>
             <p className="text-sm text-blue-700 mt-1">
-              The health score is calculated from Normalized Difference Vegetation Index
-              (NDVI) using Sentinel-2 satellite imagery. NDVI measures vegetation health
-              using near-infrared and visible light reflectance. Scores above 60 indicate
-              healthy crops, while scores below 40 may require intervention. Data is
-              updated daily at 6 AM IST.
+              Derived from Sentinel-2 satellite imagery (ESA Copernicus programme) processed daily at 6 AM IST.
             </p>
+
+            {/* NDVI Formula */}
+            <div className="mt-3 p-3 bg-white rounded-lg border border-blue-100">
+              <p className="text-xs font-semibold text-slate-700 mb-1">NDVI Formula</p>
+              <p className="font-mono text-sm text-blue-800 font-bold">NDVI = (NIR − Red) / (NIR + Red)</p>
+              <p className="text-xs text-slate-500 mt-1">
+                NIR = Band 8 (842nm) · Red = Band 4 (665nm) · Range: −1.0 to +1.0
+              </p>
+            </div>
+
+            {/* Score bands */}
+            <div className="mt-3 grid grid-cols-1 gap-1">
+              <p className="text-xs font-semibold text-slate-700 mb-1">Score Bands</p>
+              {[
+                { range: 'NDVI ≥ 0.60', label: 'Excellent', score: '95', color: 'text-green-700 bg-green-50' },
+                { range: 'NDVI ≥ 0.45', label: 'Good',      score: '80', color: 'text-lime-700 bg-lime-50' },
+                { range: 'NDVI ≥ 0.30', label: 'Moderate',  score: '60', color: 'text-yellow-700 bg-yellow-50' },
+                { range: 'NDVI ≥ 0.15', label: 'Stressed',  score: '40', color: 'text-orange-700 bg-orange-50' },
+                { range: 'NDVI < 0.15', label: 'Poor',      score: '20', color: 'text-red-700 bg-red-50' },
+              ].map(row => (
+                <div key={row.label} className={`flex items-center justify-between px-2.5 py-1.5 rounded text-xs ${row.color}`}>
+                  <span className="font-mono">{row.range}</span>
+                  <span className="font-medium">{row.label} · Score {row.score}</span>
+                </div>
+              ))}
+            </div>
+
             {lastRefresh && (
-              <p className="text-xs text-blue-600 mt-2">
-                Last updated: {lastRefresh.toLocaleString('en-IN')}
+              <p className="text-xs text-blue-600 mt-3">
+                Data updated: {lastRefresh.toLocaleString('en-IN')}
               </p>
             )}
           </div>
