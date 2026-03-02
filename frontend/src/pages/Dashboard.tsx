@@ -98,15 +98,19 @@ export default function Dashboard() {
   }, [farm?.farmId]);
 
   const healthStats = useMemo(() => {
-    const current = data.cropHealth?.current;
-    const history = data.cropHealth?.history || [];
-    const currentScore = current?.healthScore || 0;
-    const weekAgoScore = history.length > 6 ? history[6]?.healthScore || currentScore : currentScore;
-    const change = currentScore - weekAgoScore;
+    const isSimulated = (source?: string) =>
+      !source || source.toLowerCase() === 'simulated';
+    const realHistory = (data.cropHealth?.history || []).filter(
+      (r) => !isSimulated(r.source)
+    );
+    const current = realHistory[0] ?? null;
+    const currentScore = current?.healthScore ?? 0;
+    const oldRecord = realHistory.length > 1 ? realHistory[realHistory.length - 1] : null;
+    const change = oldRecord ? currentScore - oldRecord.healthScore : 0;
     let trend: 'improving' | 'declining' | 'stable' = 'stable';
     if (change > 3) trend = 'improving';
     else if (change < -3) trend = 'declining';
-    return { currentScore, change, trend, ndvi: current?.ndvi || 0 };
+    return { currentScore, change, trend, ndvi: current?.ndvi ?? 0, hasRealData: current !== null };
   }, [data.cropHealth]);
 
   const recentAlerts = useMemo(() => {
@@ -263,7 +267,7 @@ export default function Dashboard() {
             {/* Hero score */}
             <div className="text-center flex-shrink-0">
               <div className={`text-4xl font-black leading-none ${healthColor}`}>
-                {loading ? '--' : healthStats.currentScore}
+                {loading ? '--' : healthStats.hasRealData ? healthStats.currentScore : '--'}
               </div>
               <div className="text-xs text-slate-400 mt-0.5">/ 100</div>
             </div>
@@ -378,7 +382,7 @@ export default function Dashboard() {
           </p>
           <div className="flex items-end gap-1 mt-1">
             <span className={`text-2xl sm:text-3xl font-bold leading-none ${healthColor}`}>
-              {loading ? '--' : healthStats.currentScore}
+              {loading ? '--' : healthStats.hasRealData ? healthStats.currentScore : '--'}
             </span>
             <span className="text-slate-400 text-xs mb-0.5">/100</span>
           </div>
@@ -463,21 +467,28 @@ export default function Dashboard() {
             <span className="text-slate-400 text-xs mb-0.5">/1.0</span>
           </div>
           <p className="text-xs text-slate-500 mt-1.5 capitalize truncate">
-            {data.satellite?.data?.[0]?.healthStatus || 'Sentinel-2'}
+            {(() => {
+              const realSat = data.satellite?.data?.find(
+                (d) => d.source && d.source.toLowerCase() !== 'simulated'
+              );
+              return (['excellent', 'good', 'moderate', 'stressed', 'poor'] as string[]).includes(
+                realSat?.healthStatus ?? ''
+              ) ? realSat?.healthStatus : 'Sentinel-2';
+            })()}
           </p>
         </motion.div>
       </motion.div>
 
       {/* ── Two Column: Alerts + Forecast ─────────────────────────────── */}
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid lg:grid-cols-2 gap-6 mb-6 overflow-hidden">
         {/* Recent Alerts */}
-        <motion.div variants={cardVariants} initial="hidden" animate="visible" className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="section-header mb-0 flex items-center gap-2">
-              <Flame className="w-4 h-4 text-red-500" />
-              Recent Alerts
+        <motion.div variants={cardVariants} initial="hidden" animate="visible" className="card min-w-0">
+          <div className="flex items-center justify-between mb-4 gap-2">
+            <h2 className="section-header mb-0 flex items-center gap-2 min-w-0 truncate">
+              <Flame className="w-4 h-4 text-red-500 flex-shrink-0" />
+              <span className="truncate">Recent Alerts</span>
             </h2>
-            <Link to="/threats" className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1">
+            <Link to="/threats" className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
               View all <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -501,13 +512,13 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Disease & Pest Forecast */}
-        <motion.div variants={cardVariants} initial="hidden" animate="visible" className="card">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="section-header mb-0 flex items-center gap-2">
-              <Bug className="w-4 h-4 text-orange-500" />
-              Disease Forecast
+        <motion.div variants={cardVariants} initial="hidden" animate="visible" className="card min-w-0">
+          <div className="flex items-center justify-between mb-4 gap-2">
+            <h2 className="section-header mb-0 flex items-center gap-2 min-w-0 truncate">
+              <Bug className="w-4 h-4 text-orange-500 flex-shrink-0" />
+              <span className="truncate">Disease Forecast</span>
             </h2>
-            <Link to="/weather" className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1">
+            <Link to="/weather" className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
               Weather <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
@@ -663,13 +674,13 @@ function AlertListItem({ alert }: { alert: api.Alert }) {
   };
   const timeAgo = getRelativeTime(new Date(alert.alertTimestamp));
   return (
-    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors overflow-hidden">
       <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${severityColors[alert.severity] || 'bg-slate-100 text-slate-600'}`}>
         <AlertTriangle className="w-4 h-4" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-slate-900 truncate">{alert.title}</p>
-        <p className="text-xs text-slate-500">{alert.alertType} · {timeAgo}</p>
+        <p className="text-xs text-slate-500 truncate">{alert.alertType} · {timeAgo}</p>
       </div>
       <span className={`px-2 py-0.5 rounded text-xs font-medium flex-shrink-0 ${severityColors[alert.severity] || 'bg-slate-100 text-slate-600'}`}>
         {alert.severity}

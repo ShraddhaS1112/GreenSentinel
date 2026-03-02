@@ -106,7 +106,7 @@ export default function CameraManagement() {
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
           <Camera className="w-5 h-5 text-green-600" />
-          Quick Scan (Browser Camera)
+          Quick Scan
         </h2>
         <LiveCamera
           farmId={farm.farmId}

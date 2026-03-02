@@ -215,6 +215,7 @@ export interface CropHealthRecord {
   healthStatus: string;
   trend: 'improving' | 'stable' | 'declining';
   recommendations: string[];
+  source?: string;
 }
 
 export interface CropHealthResponse {
@@ -436,6 +437,22 @@ export async function analyzeThreat(
       body: JSON.stringify({ farmId, imageData }),
     }
   );
+}
+
+// ============================================================================
+// Edge Agent Status
+// ============================================================================
+
+export interface AgentStatus {
+  online: boolean;
+  lastSeen: string | null;
+  cameras: { id: string; name: string; type: string }[];
+}
+
+export async function getAgentStatus(
+  farmId: string
+): Promise<ApiResponse<AgentStatus>> {
+  return apiCall<AgentStatus>(`/agent-heartbeat?farmId=${encodeURIComponent(farmId)}`);
 }
 
 // ============================================================================

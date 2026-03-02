@@ -13,6 +13,7 @@ import {
   Cloud,
   Droplets,
   Satellite,
+  Camera,
   Calendar,
   ChevronRight,
   RefreshCw,
@@ -24,7 +25,7 @@ import { useFarmStore } from '@/stores/farmStore';
 import * as api from '@/services/apiService';
 import { format } from 'date-fns';
 
-type AlertType = 'disease' | 'pest' | 'weather' | 'irrigation' | 'satellite';
+type AlertType = 'disease' | 'pest' | 'weather' | 'irrigation' | 'satellite' | 'camera';
 
 const alertIcons: Record<AlertType, typeof Bug> = {
   disease: Bug,
@@ -32,6 +33,7 @@ const alertIcons: Record<AlertType, typeof Bug> = {
   weather: Cloud,
   irrigation: Droplets,
   satellite: Satellite,
+  camera: Camera,
 };
 
 const severityColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -76,7 +78,13 @@ export default function ThreatHistory() {
 
   // Filter alerts
   const filteredAlerts = useMemo(() => {
-    let filtered = [...alerts];
+    // Deduplicate by alertId (API may return the same alert more than once)
+    const seen = new Set<string>();
+    let filtered = alerts.filter(a => {
+      if (seen.has(a.alertId)) return false;
+      seen.add(a.alertId);
+      return true;
+    });
 
     // Filter by type
     if (selectedTypes.length > 0) {
@@ -160,7 +168,7 @@ export default function ThreatHistory() {
             Filter by type:
           </span>
 
-          {(['disease', 'pest', 'weather', 'irrigation', 'satellite'] as AlertType[]).map((type) => {
+          {(['disease', 'pest', 'weather', 'irrigation', 'satellite', 'camera'] as AlertType[]).map((type) => {
             const Icon = alertIcons[type];
             const isSelected = selectedTypes.includes(type);
 

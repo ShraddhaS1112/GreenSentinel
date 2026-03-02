@@ -430,6 +430,7 @@ export class GreenSentinelStack extends cdk.Stack {
       TWILIO_SECRET_ARN: twilioSecret.secretArn,
       ALERT_TOPIC_ARN: alertTopic.topicArn,
       DIGEST_TOPIC_ARN: digestTopic.topicArn,
+      MAX_DAILY_AI_CALLS: '200', // Budget cap: Bedrock calls per day across all farms
     };
 
     // Satellite Processor Lambda - NDVI calculation using Sentinel-2 via STAC API
@@ -1025,7 +1026,7 @@ export class GreenSentinelStack extends cdk.Stack {
       code: lambda.Code.fromInline(`
         const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
         const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
-        const { DynamoDBDocumentClient, QueryCommand } = require('@aws-sdk/lib-dynamodb');
+        const { DynamoDBDocumentClient, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 
         const secretsClient = new SecretsManagerClient({});
         const ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
@@ -1062,16 +1063,16 @@ export class GreenSentinelStack extends cdk.Stack {
               const message = JSON.parse(record.Sns?.Message || '{}');
               const { farmId, userId, alertType, severity, title, description } = message;
 
-              if (!farmId || !userId) {
-                console.log('Missing farmId or userId, skipping');
+              if (!farmId) {
+                console.log('Missing farmId, skipping');
                 continue;
               }
 
-              // Fetch user's phone number from farms table
-              const farmResult = await ddbClient.send(new QueryCommand({
+              // Scan farms table by farmId (works regardless of userId format mismatch)
+              const farmResult = await ddbClient.send(new ScanCommand({
                 TableName: process.env.FARMS_TABLE,
-                KeyConditionExpression: 'userId = :userId AND farmId = :farmId',
-                ExpressionAttributeValues: { ':userId': userId, ':farmId': farmId },
+                FilterExpression: 'farmId = :farmId',
+                ExpressionAttributeValues: { ':farmId': farmId },
               }));
 
               const farm = farmResult.Items?.[0];
@@ -1089,12 +1090,37 @@ export class GreenSentinelStack extends cdk.Stack {
                 continue;
               }
 
-              // Build alert message
-              const alertMessage = '🚨 Green Sentinel Alert\\n\\n' +
-                'Farm: ' + (farm.name || farmId) + '\\n' +
-                'Type: ' + (alertType || 'Unknown') + '\\n' +
-                'Severity: ' + (severity || 'medium').toUpperCase() + '\\n\\n' +
-                (title || 'Alert') + '\\n' + (description || 'Check your farm.');
+              // Build human-readable alert message
+              const NL = String.fromCharCode(10);
+              let bodyText = description || 'Check your farm.';
+              try {
+                const parsed = JSON.parse(description);
+                if (parsed && parsed.type === 'threat') {
+                  const parts = [];
+                  if (parsed.fire?.detected) parts.push('Fire detected (' + parsed.fire.confidence + '% confidence)');
+                  if (parsed.human?.detected) parts.push('Intruder detected (' + parsed.human.confidence + '% confidence)');
+                  if (parsed.animal?.detected) parts.push('Animal intrusion: ' + (parsed.animal.species || []).join(', '));
+                  if (parsed.recommendations?.length) parts.push('Action: ' + parsed.recommendations[0]);
+                  bodyText = parts.length ? parts.join(NL) : 'No active threats detected.';
+                } else if (parsed && typeof parsed === 'object') {
+                  // Disease scan or other structured result — don't dump raw JSON
+                  if (parsed.error) {
+                    bodyText = 'Analysis note: ' + parsed.error;
+                  } else if (parsed.disease) {
+                    bodyText = 'Disease: ' + parsed.disease + (parsed.confidence ? ' (' + parsed.confidence + '% confidence)' : '');
+                  } else {
+                    bodyText = 'Check the GreenSentinel app for details.';
+                  }
+                }
+              } catch (_) {}
+              const severityEmoji = { critical: '🔴', high: '🟠', medium: '🟡', low: '🟢' }[severity] || '⚠️';
+              const alertMessage = [
+                '🚨 *GreenSentinel Alert*',
+                severityEmoji + ' ' + (severity || 'medium').toUpperCase() + ' — ' + (farm.name || farmId),
+                '',
+                '*' + (title || 'Alert') + '*',
+                bodyText
+              ].join(NL);
 
               let sent = false;
 
@@ -1567,15 +1593,20 @@ export class GreenSentinelStack extends cdk.Stack {
                 const base64Image = Buffer.from(imageBuffer).toString('base64');
 
                 // Analyze with Amazon Bedrock Claude
-                const prompt = 'You are an expert agricultural pathologist specializing in Indian crops. Analyze this plant image and identify any diseases, pests, or health issues.\\n\\nIMPORTANT: All text output MUST be in ENGLISH (except hindiName which should be in Hindi/Devanagari script). Do not use any Hindi in other fields.\\n\\nProvide your analysis in the following JSON format ONLY (no other text):\\n{\\n  \\"detected\\": true/false,\\n  \\"disease\\": \\"disease name in English or null\\",\\n  \\"confidence\\": 0-100,\\n  \\"severity\\": \\"low/medium/high/critical\\",\\n  \\"symptoms\\": [\\"symptom1 in English\\", \\"symptom2 in English\\"],\\n  \\"causes\\": [\\"cause1 in English\\", \\"cause2 in English\\"],\\n  \\"treatment\\": [\\"treatment1 in English\\", \\"treatment2 in English\\"],\\n  \\"prevention\\": [\\"prevention1 in English\\", \\"prevention2 in English\\"],\\n  \\"affectedCrops\\": [\\"crop1\\", \\"crop2\\"],\\n  \\"hindiName\\": \\"disease name in Hindi script (Devanagari)\\",\\n  \\"summary\\": \\"Brief summary in simple English for farmers\\"\\n}\\n\\nCrop type: ' + (cropType || 'Unknown') + '\\n\\nAnalyze the image:';
+                const cropContext = cropType
+                  ? 'Plant type context: ' + cropType + '. Report what you ACTUALLY see in this image — if symptoms suggest a different disease than typical for this crop, report the observed disease.'
+                  : 'Plant type not specified — identify the plant from the image and include it in affectedCrops.';
+
+                const prompt = 'You are an expert agricultural pathologist for Indian farms. Examine this plant image CAREFULLY for any diseases, pest damage, nutrient deficiencies, or stress symptoms.\\n\\nCRITICAL RULES:\\n1. Scrutinize the image for: discoloration, spots, lesions, wilting, yellowing, browning, mold, rot, pest holes, unusual patterns, or abnormal growth.\\n2. Do NOT conclude healthy if ANY symptoms are visible — a missed disease can destroy a farmer\'s entire crop and livelihood.\\n3. Set \\"detected\\": true whenever visible symptoms exist, even at moderate confidence.\\n4. Report what you ACTUALLY SEE in the image, not what is typical for the crop type hint.\\n\\nALL output MUST be in ENGLISH (hindiName field only: use Hindi/Devanagari script).\\n\\n' + cropContext + '\\n\\nReturn ONLY this JSON (no other text):\\n{\\n  \\"detected\\": true/false,\\n  \\"disease\\": \\"specific disease name in English or null if truly healthy\\",\\n  \\"confidence\\": 0-100,\\n  \\"severity\\": \\"low/medium/high/critical\\",\\n  \\"symptoms\\": [\\"observed symptom 1\\", \\"observed symptom 2\\"],\\n  \\"causes\\": [\\"cause 1\\", \\"cause 2\\"],\\n  \\"treatment\\": [\\"treatment step 1\\", \\"treatment step 2\\"],\\n  \\"prevention\\": [\\"prevention tip 1\\", \\"prevention tip 2\\"],\\n  \\"affectedCrops\\": [\\"identified crop type\\"],\\n  \\"hindiName\\": \\"disease name in Hindi/Devanagari (null if not detected)\\",\\n  \\"summary\\": \\"2-3 sentences in plain English: what you observe and what the farmer should do immediately\\"}';
 
                 const bedrockInput = {
-                  modelId: 'anthropic.claude-3-sonnet-20240229-v1:0',
+                  modelId: 'apac.anthropic.claude-3-5-sonnet-20241022-v2:0',
                   contentType: 'application/json',
                   accept: 'application/json',
                   body: JSON.stringify({
                     anthropic_version: 'bedrock-2023-05-31',
-                    max_tokens: 1024,
+                    max_tokens: 2048,
+                    system: 'You are a plant disease detection specialist. Your ONLY job is to identify visible diseases, pest damage, and abnormalities in plant images. You MUST flag any visible symptom — discoloration, brown spots, yellow patches, lesions, mold, wilting, holes, unusual textures. NEVER conclude healthy if ANY abnormality is visible. False negatives cost Indian farmers their livelihoods. Always err toward detection.',
                     messages: [{
                       role: 'user',
                       content: [
@@ -1601,14 +1632,15 @@ export class GreenSentinelStack extends cdk.Stack {
                   const responseBody = JSON.parse(new TextDecoder().decode(bedrockResponse.body));
                   const analysisText = responseBody.content?.[0]?.text || '{}';
 
-                  // Parse the JSON response
+                  // Parse the JSON response — use indexOf/lastIndexOf to avoid regex escape issues
                   let analysis;
                   try {
-                    // Extract JSON from response (in case there's extra text)
-                    const jsonMatch = analysisText.match(/\\{[\\s\\S]*\\}/);
-                    analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : { detected: false, error: 'Could not parse response' };
+                    const first = analysisText.indexOf('{');
+                    const last = analysisText.lastIndexOf('}');
+                    const jsonStr = (first !== -1 && last > first) ? analysisText.slice(first, last + 1) : analysisText;
+                    analysis = JSON.parse(jsonStr);
                   } catch {
-                    analysis = { detected: false, summary: analysisText };
+                    analysis = { detected: false, error: 'Could not parse response', summary: analysisText.substring(0, 200) };
                   }
 
                   // Store scan result in DynamoDB
@@ -1646,7 +1678,7 @@ export class GreenSentinelStack extends cdk.Stack {
                         alertType: 'disease-scan',
                         severity: analysis.severity,
                         title: 'Disease Alert: ' + (analysis.disease || 'Unknown disease detected'),
-                        description: analysis.summary + '\\n\\nTreatment: ' + (analysis.treatment || []).join(', ')
+                        description: analysis.summary + String.fromCharCode(10) + String.fromCharCode(10) + 'Treatment: ' + (analysis.treatment || []).join(', ')
                       })
                     }));
                   }
@@ -1710,57 +1742,150 @@ export class GreenSentinelStack extends cdk.Stack {
               const bedrockClient = new BedrockRuntimeClient({ region: 'ap-south-1' });
 
               const body = JSON.parse(event.body || '{}');
-              const { farmId, imageData } = body;
+              const { farmId, imageData, autoMode, cameraId, cameraName, phoneNumber } = body;
 
               if (!farmId || !imageData) {
                 return { statusCode: 400, headers, body: JSON.stringify({ error: 'farmId and imageData required' }) };
               }
 
-              const threatPrompt = 'You are an AI security system for Indian agricultural farms. Analyze this image for security threats. Be precise and conservative — only report threats you are confident about. False alarms are costly for farmers.\n\nIMPORTANT: Respond ONLY in valid JSON. All text MUST be in English.\n\n{\n  "fire": {\n    "detected": true_or_false,\n    "confidence": 0_to_100,\n    "description": "what you see or null"\n  },\n  "human": {\n    "detected": true_or_false,\n    "confidence": 0_to_100,\n    "count": number_of_people,\n    "activity": "what they are doing or null",\n    "suspicious": true_or_false\n  },\n  "animal": {\n    "detected": true_or_false,\n    "confidence": 0_to_100,\n    "species": ["list","of","identified","animals"],\n    "description": "location and behavior or null"\n  },\n  "overallThreat": "none_or_low_or_medium_or_high_or_critical",\n  "recommendations": ["action 1", "action 2"]\n}\n\nFire: flames, smoke, orange/red glow, smoldering. Day or night.\nHuman: people near field boundaries, crop storage, fences. Workers in daylight are normal — strangers at night or near storage are suspicious.\nAnimal: cattle, nilgai, wild boar, monkeys, elephants, birds. Focus on crop-damaging animals in the field.\n\nIf image is unclear or too dark: set all detected to false, overallThreat to "none".';
-
+              // ── Budget guard: cap Bedrock calls per day to prevent cost spikes ──
+              const MAX_DAILY_CALLS = parseInt(process.env.MAX_DAILY_AI_CALLS || '200');
+              const today = new Date().toISOString().split('T')[0];
               try {
-                const bedrockInput = {
-                  modelId: 'anthropic.claude-3-sonnet-20240229-v1:0',
+                await docClient.send(new UpdateCommand({
+                  TableName: process.env.FARMS_TABLE,
+                  Key: { userId: '_system', farmId: 'ai-budget-' + today },
+                  UpdateExpression: 'SET callCount = if_not_exists(callCount, :zero) + :one, #ttl = :ttl',
+                  ConditionExpression: 'attribute_not_exists(callCount) OR callCount < :max',
+                  ExpressionAttributeNames: { '#ttl': 'ttl' },
+                  ExpressionAttributeValues: {
+                    ':zero': 0, ':one': 1, ':max': MAX_DAILY_CALLS,
+                    ':ttl': Math.floor(Date.now() / 1000) + 172800
+                  }
+                }));
+              } catch (budgetErr) {
+                if (budgetErr?.name === 'ConditionalCheckFailedException') {
+                  return { statusCode: 429, headers, body: JSON.stringify({ error: 'Daily AI budget exhausted. Resets at midnight.', budgetExhausted: true }) };
+                }
+                console.error('Budget check error (non-fatal):', budgetErr?.message);
+              }
+
+              // ── Shared helper: call a Bedrock model and parse threat JSON ──────
+              const callBedrock = async (modelId, imageData, maxTokens) => {
+                const prompt = 'You are an AI security system for Indian agricultural farms. Analyze this image for security threats.\n\nIMPORTANT: Respond ONLY in valid JSON. All text MUST be in English.\n\n{"fire":{"detected":true_or_false,"confidence":0_to_100,"description":"brief or null"},"human":{"detected":true_or_false,"confidence":0_to_100,"count":0,"activity":"brief or null","suspicious":true_or_false},"animal":{"detected":true_or_false,"confidence":0_to_100,"species":[],"description":"brief or null"},"overallThreat":"none|low|medium|high|critical","recommendations":["action1"]}\n\nFire: flames, smoke, glow, smoldering.\nHuman: strangers near boundaries or storage are suspicious; workers in daylight are not.\nAnimal: cattle, nilgai, boar, monkeys, elephants near crops.\nUnclear/dark image: all detected=false, overallThreat="none".';
+                const res = await bedrockClient.send(new InvokeModelCommand({
+                  modelId,
                   contentType: 'application/json',
                   accept: 'application/json',
                   body: JSON.stringify({
                     anthropic_version: 'bedrock-2023-05-31',
-                    max_tokens: 512,
-                    messages: [{
-                      role: 'user',
-                      content: [
-                        {
-                          type: 'image',
-                          source: {
-                            type: 'base64',
-                            media_type: 'image/jpeg',
-                            data: imageData
-                          }
-                        },
-                        { type: 'text', text: threatPrompt }
-                      ]
-                    }]
+                    max_tokens: maxTokens,
+                    messages: [{ role: 'user', content: [
+                      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageData } },
+                      { type: 'text', text: prompt }
+                    ]}]
                   })
-                };
+                }));
+                const text = JSON.parse(new TextDecoder().decode(res.body)).content?.[0]?.text || '{}';
+                const m = text.match(/\{[\s\S]*\}/);
+                return m ? JSON.parse(m[0]) : { fire:{detected:false,confidence:0,description:null}, human:{detected:false,confidence:0,count:0,activity:null,suspicious:false}, animal:{detected:false,confidence:0,species:[],description:null}, overallThreat:'none', recommendations:[] };
+              };
 
-                const bedrockResponse = await bedrockClient.send(new InvokeModelCommand(bedrockInput));
-                const responseBody = JSON.parse(new TextDecoder().decode(bedrockResponse.body));
-                const analysisText = responseBody.content?.[0]?.text || '{}';
+              // ── Cost-optimised two-stage analysis ──────────────────────────
+              // Stage 1: Haiku  ~$0.0003/call — fast screening (~3s)
+              // Stage 2: Sonnet ~$0.007/call  — confirm only if Haiku flags a threat
+              // Typical saving: 85–90% vs always using Sonnet
+              try {
+                const haikuAnalysis = await callBedrock('anthropic.claude-3-haiku-20240307-v1:0', imageData, 256);
+                const needsConfirmation = haikuAnalysis.overallThreat !== 'none' && haikuAnalysis.overallThreat !== 'low';
 
-                // Extract JSON from response
-                const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-                const analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : {
-                  fire: { detected: false, confidence: 0, description: null },
-                  human: { detected: false, confidence: 0, count: 0, activity: null, suspicious: false },
-                  animal: { detected: false, confidence: 0, species: [], description: null },
-                  overallThreat: 'none',
-                  recommendations: []
-                };
+                // Escalate to Sonnet only when Haiku detects a real threat
+                const analysis = needsConfirmation
+                  ? await callBedrock('apac.anthropic.claude-3-5-sonnet-20241022-v2:0', imageData, 512)
+                  : haikuAnalysis;
 
-                return { statusCode: 200, headers, body: JSON.stringify({ farmId, analysis, analyzedAt: new Date().toISOString() }) };
+                console.log('Model used:', needsConfirmation ? 'haiku+sonnet' : 'haiku-only', '| threat:', analysis.overallThreat);
+
+                // ── Auto-save alert + SMS when called from edge agent ──
+                const isThreat = analysis.overallThreat !== 'none' && analysis.overallThreat !== 'low';
+                if (autoMode && isThreat) {
+                  const threatTypes = [];
+                  if (analysis.fire?.detected) threatTypes.push('Fire');
+                  if (analysis.human?.detected && analysis.human.suspicious) threatTypes.push('Intruder');
+                  if (analysis.animal?.detected) threatTypes.push(analysis.animal.species?.[0] || 'Animal');
+                  const threatLabel = threatTypes.join(', ') || analysis.overallThreat;
+                  const camLabel = cameraName || cameraId || 'Camera';
+                  try {
+                    await docClient.send(new PutCommand({
+                      TableName: process.env.ALERTS_TABLE,
+                      Item: {
+                        farmId,
+                        alertTimestamp: new Date().toISOString(),
+                        alertId: 'agent_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                        alertType: 'security',
+                        severity: analysis.overallThreat === 'critical' ? 'critical' : analysis.overallThreat === 'high' ? 'high' : 'medium',
+                        title: 'Auto-detected: ' + threatLabel + ' \u2014 ' + camLabel,
+                        description: JSON.stringify({ type: 'threat', source: 'edge-agent', analysis, camera: camLabel }),
+                        source: 'edge-agent',
+                        isRead: false,
+                        ttl: Math.floor(Date.now() / 1000) + 2592000
+                      }
+                    }));
+                  } catch (e) { console.error('Auto-alert save error:', e.message); }
+                  if ((analysis.overallThreat === 'high' || analysis.overallThreat === 'critical') && phoneNumber) {
+                    try {
+                      await snsClient.send(new PublishCommand({
+                        PhoneNumber: phoneNumber,
+                        Message: '\uD83D\uDEA8 GreenSentinel: ' + threatLabel + ' detected at ' + camLabel + '. Open app immediately. Farm: ' + farmId,
+                        MessageAttributes: { 'AWS.SNS.SMS.SMSType': { DataType: 'String', StringValue: 'Transactional' } }
+                      }));
+                    } catch (e) { console.error('SMS error:', e.message); }
+                  }
+                }
+
+                return { statusCode: 200, headers, body: JSON.stringify({ farmId, analysis, analyzedAt: new Date().toISOString(), autoSaved: !!(autoMode && isThreat) }) };
               } catch (err) {
                 console.error('Threat detection error:', err);
+                const isThrottled = (err?.name === 'ThrottlingException') ||
+                                    ((err?.message || '').toLowerCase().includes('too many requests')) ||
+                                    (err?.$metadata?.httpStatusCode === 429);
+                if (isThrottled) {
+                  return { statusCode: 429, headers, body: JSON.stringify({ error: 'AI service is busy — please wait 30 seconds and try again', throttled: true }) };
+                }
                 return { statusCode: 500, headers, body: JSON.stringify({ error: 'Threat analysis failed' }) };
+              }
+            }
+
+            // =====================================================================
+            // Edge Agent Heartbeat — lets dashboard show "Agent Online" status
+            // =====================================================================
+            if (path.startsWith('/agent-heartbeat')) {
+              if (httpMethod === 'POST') {
+                const body = JSON.parse(event.body || '{}');
+                const { farmId, agentVersion, cameras } = body;
+                if (!farmId) return { statusCode: 400, headers, body: JSON.stringify({ error: 'farmId required' }) };
+                await docClient.send(new PutCommand({
+                  TableName: process.env.FARMS_TABLE,
+                  Item: {
+                    userId: '_agent',
+                    farmId: 'hb-' + farmId,
+                    lastSeen: new Date().toISOString(),
+                    agentVersion: agentVersion || '1.0',
+                    cameras: cameras || [],
+                    ttl: Math.floor(Date.now() / 1000) + 300
+                  }
+                }));
+                return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+              }
+              if (httpMethod === 'GET') {
+                const farmId = queryStringParameters?.farmId;
+                if (!farmId) return { statusCode: 400, headers, body: JSON.stringify({ error: 'farmId required' }) };
+                const result = await docClient.send(new GetCommand({
+                  TableName: process.env.FARMS_TABLE,
+                  Key: { userId: '_agent', farmId: 'hb-' + farmId }
+                }));
+                const online = !!result.Item && (Date.now() - new Date(result.Item.lastSeen).getTime()) < 300000;
+                return { statusCode: 200, headers, body: JSON.stringify({ online, lastSeen: result.Item?.lastSeen || null, cameras: result.Item?.cameras || [] }) };
               }
             }
 

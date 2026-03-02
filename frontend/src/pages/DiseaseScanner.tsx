@@ -40,6 +40,8 @@ export default function DiseaseScanner() {
   const [scanHistory, setScanHistory] = useState<api.DiseaseScanResult[]>([]);
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  // User-specified crop type for this scan (not auto-assumed from farm)
+  const [scanCropType, setScanCropType] = useState('');
 
   // Fetch scan history
   useEffect(() => {
@@ -156,7 +158,8 @@ export default function DiseaseScanner() {
       }
 
       // Step 3: Analyze with AI
-      const cropType = farm.cropType || 'Unknown';
+      // Use user-specified crop type, or undefined to let AI auto-detect
+      const cropType = scanCropType.trim() || undefined;
       const analysisResponse = await api.analyzeDiseaseScan(
         farm.farmId,
         scanId,
@@ -164,13 +167,35 @@ export default function DiseaseScanner() {
         cropType
       );
 
+      if (analysisResponse.status === 429) {
+        toast.error('AI service is busy — please wait 30 seconds and try again.', { duration: 6000 });
+        return;
+      }
       if (analysisResponse.error || !analysisResponse.data) {
         throw new Error(analysisResponse.error || 'Analysis failed');
       }
 
-      setAnalysisResult(analysisResponse.data.analysis);
+      const analysis = analysisResponse.data.analysis;
+      setAnalysisResult(analysis);
       toast.success('Analysis complete!');
       fetchHistory(); // Refresh history
+
+      // Save as alert so it appears in History and Dashboard
+      if (farm) {
+        const severity: api.Alert['severity'] = analysis.detected ? (analysis.severity ?? 'medium') : 'low';
+        api.triggerAlert(
+          farm.farmId,
+          farm.userId ?? 'demo-user',
+          {
+            alertType: 'disease',
+            severity,
+            title: analysis.detected
+              ? `${analysis.disease || 'Disease'} detected on ${scanCropType.trim() || analysis.affectedCrops?.[0] || 'crop'}`
+              : `Crop scan — no disease found (${scanCropType.trim() || 'crop'})`,
+            description: JSON.stringify(analysis),
+          }
+        ).catch(() => { /* non-critical */ });
+      }
     } catch (err) {
       console.error('Analysis error:', err);
       toast.error(err instanceof Error ? err.message : 'Analysis failed');
@@ -306,7 +331,24 @@ export default function DiseaseScanner() {
                 </button>
               </div>
 
-              <div className="mt-4 flex gap-3">
+              {/* Crop type override — user specifies what plant this is */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Plant / Crop Type <span className="text-slate-400 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={scanCropType}
+                  onChange={(e) => setScanCropType(e.target.value)}
+                  placeholder="e.g. Rice, Tomato, Wheat — leave blank to auto-detect"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Specify the plant type for more accurate results. Leave blank to let AI identify it.
+                </p>
+              </div>
+
+              <div className="mt-3 flex gap-3">
                 <button
                   onClick={analyzeImage}
                   disabled={isAnalyzing}

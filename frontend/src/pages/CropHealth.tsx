@@ -99,20 +99,31 @@ export default function CropHealth() {
     fetchData();
   }, [farm?.farmId]);
 
-  // Get current values from API data
-  const currentHealth = healthData?.current;
-  const currentScore = currentHealth?.healthScore || 0;
-  const currentNdvi = currentHealth?.ndvi || 0;
+  // Helper: is a record from the simulated processor?
+  const isSimulated = (source?: string) =>
+    !source || source.toLowerCase() === 'simulated';
+
+  // Filter history to real satellite records only
+  const realHistory = (healthData?.history || []).filter(
+    (r) => !isSimulated(r.source)
+  );
+
+  // Use real history for current values; fall back to null if no real data
+  const currentHealth = realHistory[0] ?? null;
+  const currentScore = currentHealth?.healthScore ?? 0;
+  const currentNdvi = currentHealth?.ndvi ?? 0;
   const trend = healthData?.trend || 'stable';
 
-  // Calculate week-over-week change
-  const historyItems = healthData?.history || [];
-  const weekAgoScore = historyItems.length > 7 ? historyItems[7]?.healthScore || currentScore : currentScore;
-  const scoreChange = currentScore - weekAgoScore;
+  // Calculate week-over-week change from real records
+  const weekAgoRecord = realHistory.length > 1 ? realHistory[realHistory.length - 1] : null;
+  const scoreChange = weekAgoRecord ? currentScore - weekAgoRecord.healthScore : 0;
 
-  // Chart data from API history - simplified to just health score
+  // True if we have no real data at all
+  const noRealData = !loading && healthData !== null && realHistory.length === 0;
+
+  // Chart data from real history only
   const chartData = useMemo(() => {
-    const history = [...(healthData?.history || [])].reverse(); // Oldest first for chart
+    const history = [...realHistory].reverse(); // Oldest first for chart
 
     return {
       labels: history.map((d) => {
@@ -135,17 +146,27 @@ export default function CropHealth() {
     };
   }, [healthData, language]);
 
-  // Simple trend interpretation for farmers
+  // Simple trend interpretation for farmers (real records only)
   const trendInterpretation = useMemo(() => {
-    if (!healthData?.history || healthData.history.length < 2) return null;
+    if (realHistory.length < 2) return null;
 
-    const history = healthData.history;
-    const latest = history[0]?.healthScore || 0;
-    const twoDaysAgo = history[1]?.healthScore || latest;
-    const weekAgo = history[6]?.healthScore || latest;
+    const history = realHistory;
+    const latestRecord = history[0];
+    const prevRecord = history[1] || history[0];
+    const oldRecord = history[Math.min(6, history.length - 1)] || history[0];
+
+    const latest = latestRecord?.healthScore || 0;
+    const twoDaysAgo = prevRecord?.healthScore || latest;
+    const weekAgo = oldRecord?.healthScore || latest;
 
     const shortTermChange = latest - twoDaysAgo;
     const weeklyChange = latest - weekAgo;
+
+    const fmtDate = (d: string) =>
+      new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    const latestDate = latestRecord?.recordDate ? fmtDate(latestRecord.recordDate) : 'Today';
+    const prevDate = prevRecord?.recordDate ? fmtDate(prevRecord.recordDate) : '--';
+    const oldDate = oldRecord?.recordDate ? fmtDate(oldRecord.recordDate) : '--';
 
     // Determine trend message
     let trendMessage = '';
@@ -219,6 +240,9 @@ export default function CropHealth() {
       weekAgo,
       shortTermChange,
       weeklyChange,
+      latestDate,
+      prevDate,
+      oldDate,
     };
   }, [healthData, language]);
 
@@ -268,8 +292,10 @@ export default function CropHealth() {
 
   const category = getScoreCategory(currentScore);
 
-  // Get latest satellite info
-  const latestSatellite = satelliteData?.data?.[0];
+  // Get latest real satellite record (exclude simulated)
+  const latestSatellite = satelliteData?.data?.find(
+    (d) => !isSimulated(d.source)
+  ) ?? null;
 
   if (!farm) {
     return (
@@ -327,91 +353,84 @@ export default function CropHealth() {
         </div>
       )}
 
+      {/* No real satellite data state */}
+      {noRealData && (
+        <div className="card mb-6 bg-amber-50 border border-amber-200">
+          <div className="flex gap-3">
+            <Satellite className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-amber-900">Awaiting Real Satellite Data</h3>
+              <p className="text-sm text-amber-700 mt-1">
+                No verified Sentinel-2 capture is available for your farm yet. Real data arrives every ~5 days when cloud cover is below 30%. Check back after the next satellite pass.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Current Score Card */}
-      {healthData && (
+      {currentHealth && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="card mb-6"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <p className="text-sm text-slate-500 mb-1">Current Health Score</p>
-              <div className="flex items-end gap-3">
-                <span className={`text-5xl font-bold ${getScoreColor(currentScore)}`}>
+          <div className="flex items-center gap-4">
+            {/* Score info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-slate-500 mb-1">Current Health Score</p>
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className={`text-4xl font-bold leading-none ${getScoreColor(currentScore)}`}>
                   {currentScore}
                 </span>
-                <span className="text-slate-400 text-lg mb-2">/100</span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${category.color}`}>
+                <span className="text-slate-400 text-sm">/100</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${category.color}`}>
                   {category.label}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 mt-3">
+              <div className="flex items-center gap-1.5 mt-2">
                 {trend === 'improving' || scoreChange > 3 ? (
                   <>
-                    <TrendingUp className="w-5 h-5 text-green-500" />
-                    <span className="text-green-600 font-medium">
-                      +{Math.abs(scoreChange)} points this week
-                    </span>
+                    <TrendingUp className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-green-600 text-sm font-medium">+{Math.abs(scoreChange)} pts this week</span>
                   </>
                 ) : trend === 'declining' || scoreChange < -3 ? (
                   <>
-                    <TrendingDown className="w-5 h-5 text-red-500" />
-                    <span className="text-red-600 font-medium">
-                      {scoreChange} points this week
-                    </span>
+                    <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <span className="text-red-600 text-sm font-medium">{scoreChange} pts this week</span>
                   </>
                 ) : (
                   <>
-                    <Minus className="w-5 h-5 text-slate-400" />
-                    <span className="text-slate-500 font-medium">Stable this week</span>
+                    <Minus className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                    <span className="text-slate-500 text-sm font-medium">Stable this week</span>
                   </>
                 )}
               </div>
 
-              {/* NDVI Value */}
-              <div className="mt-4 flex items-center gap-4 text-sm">
-                <div>
-                  <span className="text-slate-500">NDVI:</span>
-                  <span className="ml-2 font-semibold text-slate-700">{currentNdvi.toFixed(3)}</span>
-                </div>
-                {healthData.averageNdvi && (
-                  <div>
-                    <span className="text-slate-500">30-day avg:</span>
-                    <span className="ml-2 font-semibold text-slate-700">
-                      {healthData.averageNdvi.toFixed(3)}
-                    </span>
-                  </div>
+              {/* NDVI row */}
+              <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
+                <span>NDVI <span className="font-semibold text-slate-700">{currentNdvi.toFixed(3)}</span></span>
+                {healthData?.averageNdvi && (
+                  <span>30d avg <span className="font-semibold text-slate-700">{healthData.averageNdvi.toFixed(3)}</span></span>
                 )}
               </div>
             </div>
 
-            {/* Score gauge visualization */}
-            <div className="relative w-32 h-32">
+            {/* Compact gauge */}
+            <div className="relative w-20 h-20 flex-shrink-0">
               <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="10" />
                 <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="none"
-                  stroke="#f1f5f9"
-                  strokeWidth="8"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="40"
-                  fill="none"
+                  cx="50" cy="50" r="40" fill="none"
                   stroke={currentScore >= 60 ? '#22c55e' : currentScore >= 40 ? '#eab308' : '#ef4444'}
-                  strokeWidth="8"
-                  strokeLinecap="round"
+                  strokeWidth="10" strokeLinecap="round"
                   strokeDasharray={`${currentScore * 2.51} 251`}
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <Leaf className={`w-6 h-6 ${getScoreColor(currentScore)}`} />
-                <span className="text-xs text-slate-500 mt-1">NDVI</span>
+                <Leaf className={`w-5 h-5 ${getScoreColor(currentScore)}`} />
+                <span className="text-[10px] text-slate-500 mt-0.5">NDVI</span>
               </div>
             </div>
           </div>
@@ -432,24 +451,18 @@ export default function CropHealth() {
               <h3 className="text-xl font-bold">{trendInterpretation.message}</h3>
               <p className="mt-2 opacity-90">{trendInterpretation.advice}</p>
 
-              {/* Simple comparison boxes */}
+              {/* Simple comparison boxes — dates from actual satellite captures */}
               <div className="mt-4 grid grid-cols-3 gap-2">
                 <div className="bg-white/60 rounded-lg p-3 text-center">
-                  <p className="text-xs opacity-70">
-                    {language === 'hi' ? '7 दिन पहले' : '7 days ago'}
-                  </p>
+                  <p className="text-xs opacity-70 truncate">{trendInterpretation.oldDate}</p>
                   <p className="text-xl font-bold">{trendInterpretation.weekAgo}</p>
                 </div>
                 <div className="bg-white/60 rounded-lg p-3 text-center">
-                  <p className="text-xs opacity-70">
-                    {language === 'hi' ? '2 दिन पहले' : '2 days ago'}
-                  </p>
+                  <p className="text-xs opacity-70 truncate">{trendInterpretation.prevDate}</p>
                   <p className="text-xl font-bold">{trendInterpretation.twoDaysAgo}</p>
                 </div>
                 <div className="bg-white/80 rounded-lg p-3 text-center border-2 border-current">
-                  <p className="text-xs opacity-70">
-                    {language === 'hi' ? 'आज' : 'Today'}
-                  </p>
+                  <p className="text-xs opacity-70 truncate">{trendInterpretation.latestDate}</p>
                   <p className="text-2xl font-bold">{trendInterpretation.latest}</p>
                 </div>
               </div>
@@ -457,13 +470,13 @@ export default function CropHealth() {
               {/* Change indicators */}
               <div className="mt-3 flex gap-4 text-sm">
                 <span>
-                  {language === 'hi' ? 'इस हफ्ते:' : 'This week:'}{' '}
+                  {language === 'hi' ? 'कुल बदलाव:' : 'Overall:'}{' '}
                   <strong className={trendInterpretation.weeklyChange >= 0 ? 'text-green-700' : 'text-red-700'}>
                     {trendInterpretation.weeklyChange >= 0 ? '+' : ''}{trendInterpretation.weeklyChange}
                   </strong>
                 </span>
                 <span>
-                  {language === 'hi' ? '2 दिन में:' : 'Last 2 days:'}{' '}
+                  {language === 'hi' ? 'पिछले से:' : 'From prev:'}{' '}
                   <strong className={trendInterpretation.shortTermChange >= 0 ? 'text-green-700' : 'text-red-700'}>
                     {trendInterpretation.shortTermChange >= 0 ? '+' : ''}{trendInterpretation.shortTermChange}
                   </strong>
@@ -474,8 +487,35 @@ export default function CropHealth() {
         </motion.div>
       )}
 
+      {/* Single record — not enough to draw a trend */}
+      {realHistory.length === 1 && (() => {
+        const lastDate = new Date(realHistory[0].recordDate);
+        const nextPass = new Date(lastDate);
+        nextPass.setDate(nextPass.getDate() + 5);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const daysUntil = Math.round((nextPass.getTime() - today.getTime()) / 86400000);
+        const nextPassLabel = nextPass.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+        const passNote = daysUntil > 0
+          ? `Next pass expected around ${nextPassLabel} (${daysUntil}d).`
+          : `Pass was due ${nextPassLabel} — likely delayed by cloud cover.`;
+        return (
+          <div className="card mb-6 bg-slate-50 border border-slate-200">
+            <div className="flex gap-3 items-start">
+              <Calendar className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-slate-700">Only 1 satellite capture so far</p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  A trend chart needs at least 2 data points. {passNote}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Health Trend Chart - Simplified */}
-      {healthData && healthData.history.length > 0 && (
+      {realHistory.length >= 2 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -485,7 +525,7 @@ export default function CropHealth() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="section-header mb-0 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-slate-400" />
-              {language === 'hi' ? `${healthData.count} दिन का रुझान` : `${healthData.count}-Day Trend`}
+              {language === 'hi' ? `${realHistory.length} रिकॉर्ड का रुझान` : `${realHistory.length}-Record Trend`}
             </h2>
           </div>
 
@@ -561,7 +601,11 @@ export default function CropHealth() {
             </div>
             <div className="p-3 bg-slate-50 rounded-lg">
               <p className="text-xs text-slate-500">Data Source</p>
-              <p className="font-semibold text-slate-700 capitalize">{latestSatellite.source}</p>
+              <p className="font-semibold text-slate-700 capitalize">
+                {latestSatellite.source && latestSatellite.source.toLowerCase() !== 'simulated'
+                  ? latestSatellite.source
+                  : 'Sentinel-2'}
+              </p>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg col-span-2">
               <p className="text-xs text-slate-500">

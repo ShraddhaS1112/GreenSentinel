@@ -128,6 +128,14 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    proxy: {
+      // Proxy all API calls through Vite in dev to avoid CORS from localhost
+      '/dev': {
+        target: 'https://4uogxqomb0.execute-api.ap-south-1.amazonaws.com',
+        changeOrigin: true,
+        secure: true,
+      },
+    },
   },
   optimizeDeps: {
     include: ['leaflet', 'react-leaflet', '@react-leaflet/core'],
