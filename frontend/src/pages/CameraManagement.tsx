@@ -111,9 +111,12 @@ export default function CameraManagement() {
         <LiveCamera
           farmId={farm.farmId}
           onThreatDetected={(threat) => {
-            toast.error(`Threat detected: ${threat.threats.map(t => t.type).join(', ')}`, {
-              duration: 5000
-            });
+            const threats = [
+              threat.fire.detected ? 'Fire' : null,
+              threat.human.detected && threat.human.suspicious ? 'Human intruder' : null,
+              threat.animal.detected ? `Animal (${threat.animal.species[0] || 'unknown'})` : null,
+            ].filter(Boolean);
+            toast.error(`Threat detected: ${threats.join(', ') || threat.overallThreat}`, { duration: 5000 });
           }}
         />
         <p className="text-sm text-slate-500 mt-2">

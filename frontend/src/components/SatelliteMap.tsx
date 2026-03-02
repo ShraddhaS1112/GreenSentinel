@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Satellite, Map as MapIcon, ExternalLink } from 'lucide-react';
+import { Satellite, Map as MapIcon, ExternalLink, Layers, ChevronDown } from 'lucide-react';
 
 interface SatelliteMapProps {
   latitude: number;
@@ -55,6 +55,7 @@ export default function SatelliteMap({
   const mapRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const [activeLayer, setActiveLayer] = useState<keyof typeof TILE_LAYERS>('satellite');
+  const [layerMenuOpen, setLayerMenuOpen] = useState(false);
 
   // Get color based on health status
   const getHealthColor = () => {
@@ -151,10 +152,40 @@ export default function SatelliteMap({
 
   return (
     <div className="relative rounded-lg overflow-hidden border border-slate-200">
-      {/* Map Controls */}
-      <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2">
-        {/* Layer Selector */}
-        <div className="bg-white rounded-lg shadow-lg p-1">
+      {/* Map Controls — desktop: always visible column; mobile: collapsible toggle */}
+      <div className="absolute top-3 right-3 z-[1000] flex flex-col items-end gap-2">
+
+        {/* Mobile toggle button (hidden on sm+) */}
+        <div className="sm:hidden">
+          <button
+            onClick={() => setLayerMenuOpen(!layerMenuOpen)}
+            className="bg-white rounded-lg shadow-lg px-3 py-2 flex items-center gap-1.5 text-xs font-medium text-slate-700"
+          >
+            <Layers className="w-3.5 h-3.5 text-green-600" />
+            {TILE_LAYERS[activeLayer].name}
+            <ChevronDown className={`w-3 h-3 transition-transform ${layerMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+          {layerMenuOpen && (
+            <div className="mt-1 bg-white rounded-lg shadow-lg p-1 flex flex-row gap-1">
+              {Object.entries(TILE_LAYERS).map(([key, layer]) => (
+                <button
+                  key={key}
+                  onClick={() => { setActiveLayer(key as keyof typeof TILE_LAYERS); setLayerMenuOpen(false); }}
+                  className={`px-2 py-1.5 text-xs font-medium rounded transition-colors ${
+                    activeLayer === key
+                      ? 'bg-green-600 text-white'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {layer.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop layer selector (hidden on mobile) */}
+        <div className="hidden sm:block bg-white rounded-lg shadow-lg p-1">
           <div className="flex flex-col gap-1">
             {Object.entries(TILE_LAYERS).map(([key, layer]) => (
               <button
@@ -172,34 +203,34 @@ export default function SatelliteMap({
           </div>
         </div>
 
-        {/* External Links */}
-        <div className="bg-white rounded-lg shadow-lg p-2">
+        {/* External Links — compact on mobile */}
+        <div className="bg-white rounded-lg shadow-lg p-1.5 sm:p-2">
           <a
             href={eoGravityLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded"
+            className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded"
           >
             <Satellite className="w-3.5 h-3.5" />
-            NDVI View
+            <span className="hidden sm:inline">NDVI View</span>
             <ExternalLink className="w-3 h-3" />
           </a>
           <a
             href={googleMapsLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded"
+            className="flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-1.5 text-xs font-medium text-blue-600 hover:bg-blue-50 rounded"
           >
             <MapIcon className="w-3.5 h-3.5" />
-            Google Maps
+            <span className="hidden sm:inline">Google Maps</span>
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
       </div>
 
-      {/* NDVI Legend */}
+      {/* NDVI Legend — bottom-right on mobile to avoid Leaflet attribution, bottom-left on desktop */}
       {ndvi !== undefined && (
-        <div className="absolute bottom-3 left-3 z-[1000] bg-white rounded-lg shadow-lg p-3">
+        <div className="absolute bottom-3 right-3 sm:bottom-3 sm:left-3 sm:right-auto z-[1000] bg-white rounded-lg shadow-lg p-2 sm:p-3">
           <div className="text-xs font-medium text-slate-700 mb-2">NDVI Index</div>
           <div className="flex items-center gap-2">
             <div

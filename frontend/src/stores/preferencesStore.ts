@@ -44,8 +44,8 @@ interface PreferencesState {
 export const usePreferencesStore = create<PreferencesState>()(
   persist(
     (set, get) => ({
-      // Initial state - default to Simple mode for accessibility
-      uiMode: 'simple',
+      // Initial state - default to Expert mode
+      uiMode: 'expert',
       largeText: false,
       highContrast: false,
       voiceGuidance: true,

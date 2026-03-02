@@ -414,6 +414,31 @@ export async function getDiseaseScanHistory(
 }
 
 // ============================================================================
+// AI Threat Detection API
+// ============================================================================
+
+export interface ThreatAnalysis {
+  fire: { detected: boolean; confidence: number; description: string | null };
+  human: { detected: boolean; confidence: number; count: number; activity: string | null; suspicious: boolean };
+  animal: { detected: boolean; confidence: number; species: string[]; description: string | null };
+  overallThreat: 'none' | 'low' | 'medium' | 'high' | 'critical';
+  recommendations: string[];
+}
+
+export async function analyzeThreat(
+  farmId: string,
+  imageData: string // base64 JPEG
+): Promise<ApiResponse<{ farmId: string; analysis: ThreatAnalysis; analyzedAt: string }>> {
+  return apiCall<{ farmId: string; analysis: ThreatAnalysis; analyzedAt: string }>(
+    '/threat-detect',
+    {
+      method: 'POST',
+      body: JSON.stringify({ farmId, imageData }),
+    }
+  );
+}
+
+// ============================================================================
 // Irrigation Planner API
 // ============================================================================
 

@@ -457,8 +457,41 @@ export default function DiseaseScanner() {
                         </ul>
                       </div>
                     )}
+
+                    {/* AI Expert Advisory — Indian context */}
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <h4 className="font-medium text-amber-900 flex items-center gap-2 mb-2 text-sm">
+                        <span className="text-base">🇮🇳</span>
+                        Indian Farm Advisory
+                      </h4>
+                      <div className="space-y-2 text-sm text-amber-800">
+                        <p>
+                          <span className="font-semibold">Estimated loss if untreated:</span>{' '}
+                          {analysisResult.severity === 'critical' ? '40–70% of yield' :
+                           analysisResult.severity === 'high' ? '20–40% of yield' :
+                           analysisResult.severity === 'medium' ? '5–20% of yield' : 'Minimal (< 5%)'}
+                        </p>
+                        <p>
+                          <span className="font-semibold">Common Indian products:</span>{' '}
+                          {analysisResult.disease?.toLowerCase().includes('blight') ? 'Mancozeb 75% WP (Dithane M-45), Copper oxychloride (Blitox-50)' :
+                           analysisResult.disease?.toLowerCase().includes('mildew') ? 'Sulfex (Sulphur 80% WP), Hexaconazole (Contaf Plus)' :
+                           analysisResult.disease?.toLowerCase().includes('rust') ? 'Propiconazole (Tilt 25 EC), Mancozeb' :
+                           analysisResult.disease?.toLowerCase().includes('wilt') ? 'Carbendazim (Bavistin 50 WP), Trichoderma viride' :
+                           'Consult local agri-input dealer for crop-specific fungicide'}
+                        </p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          For personalized advice, contact your nearest <span className="font-semibold">Krishi Vigyan Kendra (KVK)</span> or call <span className="font-semibold">Kisan Call Centre: 1800-180-1551</span> (toll-free).
+                        </p>
+                      </div>
+                    </div>
                   </>
                 )}
+
+                {/* Powered by AI badge */}
+                <div className="flex items-center justify-center gap-1.5 pt-2">
+                  <span className="text-xs text-slate-400">Powered by</span>
+                  <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">AWS Bedrock AI</span>
+                </div>
               </motion.div>
             ) : (
               <motion.div
