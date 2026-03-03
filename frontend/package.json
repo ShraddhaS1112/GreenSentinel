@@ -25,6 +25,7 @@
     "clsx": "^2.1.0",
     "date-fns": "^3.2.0",
     "framer-motion": "^10.18.0",
+    "hls.js": "^1.4.14",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.309.0",
     "react": "^18.2.0",

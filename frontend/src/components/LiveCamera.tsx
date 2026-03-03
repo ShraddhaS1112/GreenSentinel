@@ -10,6 +10,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Hls from 'hls.js';
 import {
   Camera,
   CameraOff,
@@ -39,15 +40,42 @@ interface LiveCameraProps {
 }
 
 // ---------------------------------------------------------------------------
-// Camera feed configuration
-// Add your .mp4 files to frontend/public/cameras/ and list them here.
-// The filenames must match exactly. Labels are shown as camera location names.
+// AWS MediaLive HLS Camera Feeds
+// Replace these HLS URLs with your actual AWS MediaPackage endpoints
+// Format: https://your-mediapackage.ap-south-1.amazonaws.com/out/v1/{farm-id}-{camera-id}/index.m3u8
 // ---------------------------------------------------------------------------
-const CAMERA_FEEDS = [
-  { id: 'cam1', label: 'North Gate',     location: 'CAM-01', src: '/cameras/north-gate.mp4' },
-  { id: 'cam2', label: 'South Field',    location: 'CAM-02', src: '/cameras/south-field.mp4' },
-  { id: 'cam3', label: 'Farm Overview',  location: 'CAM-03', src: '/cameras/farm-overview.mp4' },
-  { id: 'cam4', label: 'Farm Entry',     location: 'CAM-04', src: '/cameras/farm-entry.mp4' },
+interface CameraFeedConfig {
+  id: string;
+  label: string;
+  location: string;
+  hlsUrl: string;
+}
+
+const CAMERA_FEEDS: CameraFeedConfig[] = [
+  {
+    id: 'cam1',
+    label: 'North Gate',
+    location: 'CAM-01',
+    hlsUrl: 'rtsp://192.168.1.100:554/cam/realmonitor',
+  },
+  {
+    id: 'cam2',
+    label: 'South Field',
+    location: 'CAM-02',
+    hlsUrl: 'https://your-mediapackage.ap-south-1.amazonaws.com/out/v1/farm1-cam2/index.m3u8',
+  },
+  {
+    id: 'cam3',
+    label: 'Farm Overview',
+    location: 'CAM-03',
+    hlsUrl: 'https://your-mediapackage.ap-south-1.amazonaws.com/out/v1/farm1-cam3/index.m3u8',
+  },
+  {
+    id: 'cam4',
+    label: 'Farm Entry',
+    location: 'CAM-04',
+    hlsUrl: 'https://your-mediapackage.ap-south-1.amazonaws.com/out/v1/farm1-cam4/index.m3u8',
+  },
 ] as const;
 
 type CameraFeed = typeof CAMERA_FEEDS[number];
@@ -125,7 +153,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
     }
   };
 
-  // Start a named camera feed (looping video)
+  // Start a named camera feed (HLS stream via AWS MediaLive)
   const startFeed = async (feed: CameraFeed) => {
     setError(null);
     setShowFeedPicker(false);
@@ -140,17 +168,58 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
       video.srcObject = null;
     }
 
-    video.src  = feed.src;
-    video.loop = true;
-    video.muted = true;
-
     try {
-      await video.play();
-      setActiveFeed(feed);
-      setIsStreaming(true);
-      lastFrameRef.current = null;
-    } catch {
-      setError(`Could not load feed: ${feed.label}`);
+      // Use HLS.js for cross-browser HLS support
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          liveSyncDuration: 3, // 3-second buffer for low latency
+          liveMaxLatencyDuration: 10,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+        });
+
+        hls.loadSource(feed.hlsUrl);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          setActiveFeed(feed);
+          setIsStreaming(true);
+          lastFrameRef.current = null;
+          toast.success(`Connected to ${feed.label}`);
+        });
+
+        hls.on(Hls.Events.ERROR, (_event: any, data: any) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                setError(`Network error: ${feed.label} stream unavailable`);
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                setError(`Media error: Cannot play ${feed.label}`);
+                break;
+              default:
+                setError(`Stream error: ${feed.label}`);
+            }
+            hls.destroy();
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Safari native HLS support
+        video.src = feed.hlsUrl;
+        video.addEventListener('loadedmetadata', () => {
+          setActiveFeed(feed);
+          setIsStreaming(true);
+          lastFrameRef.current = null;
+          toast.success(`Connected to ${feed.label}`);
+        });
+        await video.play();
+      } else {
+        setError('HLS streaming not supported in this browser');
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : `Could not load feed: ${feed.label}`;
+      setError(message);
+      toast.error(message);
     }
   };
 
@@ -158,6 +227,13 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
   const stopFeed = () => {
     const video = videoRef.current;
     if (!video) return;
+
+    // Clean up HLS instance if it exists
+    if ((window as any).hlsInstance) {
+      (window as any).hlsInstance.destroy();
+      (window as any).hlsInstance = null;
+    }
+
     if (video.srcObject) {
       (video.srcObject as MediaStream).getTracks().forEach(t => t.stop());
       video.srcObject = null;
