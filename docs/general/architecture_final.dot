@@ -1,0 +1,103 @@
+digraph GreenSentinel {
+
+    graph [
+        label="GreenSentinel — Digital Immune System for Indian Agriculture"
+        labelloc=b  fontname="Arial"  fontsize=15
+        bgcolor="white"
+        rankdir=TB
+        splines=ortho
+        nodesep=0.55
+        ranksep=0.9
+        pad=0.6
+        size="20,13"
+        ratio=fill
+    ]
+    node  [ fontname="Arial" fontsize=10 style="filled,rounded" shape=box
+            margin="0.18,0.10" width=1.6 height=0.52 ]
+    edge  [ fontname="Arial" fontsize=9  arrowsize=0.65 ]
+
+    /* ── Row 1: Actors ──────────────────────────────────── */
+    { rank=same
+        farmer  [ label="Farmer\n(Smartphone)"    fillcolor="#C8E6C9" color="#2E7D32" ]
+        camera  [ label="Edge Agent\n(CCTV)"      fillcolor="#FFCCBC" color="#BF360C" ]
+    }
+
+    /* ── Row 2: Entry ───────────────────────────────────── */
+    { rank=same
+        cf      [ label="CloudFront\n+ S3 PWA"    fillcolor="#FFE082" color="#E65100" ]
+        cognito [ label="Cognito\nPhone OTP"       fillcolor="#F8BBD0" color="#AD1457" ]
+        apigw   [ label="API Gateway\nREST /dev"  fillcolor="#B3E5FC" color="#0277BD" ]
+    }
+
+    /* ── Row 3: Lambda ──────────────────────────────────── */
+    { rank=same
+        api_fn   [ label="api-handler\n22 routes"             fillcolor="#FFCC80" color="#EF6C00" ]
+        sat_fn   [ label="satellite-processor\nNDVI ingestion" fillcolor="#FFCC80" color="#EF6C00" ]
+        fore_fn  [ label="disease-forecast\nWeather risk"     fillcolor="#FFCC80" color="#EF6C00" ]
+        alert_fn [ label="alert-sender\nSNS subscriber"       fillcolor="#FFCC80" color="#EF6C00" ]
+    }
+
+    /* ── Row 4a: Bedrock ────────────────────────────────── */
+    { rank=same
+        haiku  [ label="Bedrock: Haiku\nFast triage  Stage 1"      fillcolor="#E1BEE7" color="#7B1FA2" ]
+        sonnet [ label="Bedrock: Sonnet v2\nDeep AI  Stage 2"       fillcolor="#CE93D8" color="#6A1B9A" ]
+        sns    [ label="SNS Topic\nalert-topic"                      fillcolor="#EF9A9A" color="#C62828" ]
+    }
+
+    /* ── Row 4b: Storage ────────────────────────────────── */
+    { rank=same
+        farms_db  [ label="DynamoDB\nfarms"         fillcolor="#A5D6A7" color="#2E7D32" shape=cylinder ]
+        health_db [ label="DynamoDB\ncrop-health"   fillcolor="#A5D6A7" color="#2E7D32" shape=cylinder ]
+        alerts_db [ label="DynamoDB\nalerts"        fillcolor="#A5D6A7" color="#2E7D32" shape=cylinder ]
+        scans_db  [ label="DynamoDB\ndisease-scans" fillcolor="#A5D6A7" color="#2E7D32" shape=cylinder ]
+        scan_s3   [ label="S3\nscan-images"         fillcolor="#C8E6C9" color="#388E3C" ]
+    }
+
+    /* ── Row 5: External ────────────────────────────────── */
+    { rank=same
+        element84 [ label="Element84 STAC\nSentinel-2 NDVI" fillcolor="#CFD8DC" color="#546E7A" ]
+        openmeteo [ label="Open-Meteo\nWeather API"          fillcolor="#CFD8DC" color="#546E7A" ]
+        twilio    [ label="Twilio\nWhatsApp Business"        fillcolor="#F48FB1" color="#AD1457" ]
+    }
+
+    /* ══ Edges ════════════════════════════════════════════ */
+
+    /* Farmer → entry */
+    farmer -> cf      [ label="HTTPS"        color="#1565C0" fontcolor="#1565C0" ]
+    farmer -> cognito [ label="Phone OTP"    color="#880E4F" fontcolor="#880E4F" ]
+    farmer -> apigw   [ label="JWT calls"    color="#1565C0" fontcolor="#1565C0" ]
+    camera -> apigw   [ label="/threat-detect" color="#B71C1C" fontcolor="#B71C1C" style=dashed ]
+
+    /* Entry → compute */
+    apigw -> api_fn   [ color="#FF6F00" penwidth=2.5 ]
+
+    /* api-handler → Bedrock */
+    api_fn -> haiku   [ label="Stage 1 triage"   color="#7B1FA2" fontcolor="#7B1FA2" ]
+    api_fn -> sonnet  [ label="disease scan"     color="#7B1FA2" fontcolor="#7B1FA2" ]
+    haiku  -> sonnet  [ label="escalate"         color="#7B1FA2" fontcolor="#7B1FA2" style=dashed ]
+
+    /* api-handler → storage */
+    api_fn -> farms_db  [ color="#2E7D32" ]
+    api_fn -> health_db [ color="#2E7D32" ]
+    api_fn -> alerts_db [ color="#2E7D32" ]
+    api_fn -> scans_db  [ color="#2E7D32" ]
+    api_fn -> scan_s3   [ color="#2E7D32" ]
+
+    /* api-handler → SNS */
+    api_fn -> sns [ label="publish alert" color="#C62828" fontcolor="#C62828" ]
+
+    /* Satellite pipeline */
+    sat_fn -> element84 [ label="NDVI query"  color="#0277BD" fontcolor="#0277BD" ]
+    sat_fn -> health_db [ color="#0277BD" ]
+
+    /* Disease forecast pipeline */
+    fore_fn -> openmeteo [ label="weather"  color="#00695C" fontcolor="#00695C" ]
+    fore_fn -> farms_db  [ color="#00695C" ]
+    fore_fn -> alerts_db [ color="#00695C" ]
+
+    /* Alert delivery */
+    sns      -> alert_fn [ color="#C62828" penwidth=2 ]
+    alert_fn -> farms_db [ color="#C62828" ]
+    alert_fn -> twilio   [ label="send"  color="#C62828" fontcolor="#C62828" ]
+    twilio   -> farmer   [ label="WhatsApp" color="#C62828" fontcolor="#C62828" style=dashed ]
+}
