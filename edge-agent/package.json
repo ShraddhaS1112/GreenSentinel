@@ -1,0 +1,18 @@
+{
+  "name": "greensentinel-edge-agent",
+  "version": "1.0.0",
+  "description": "GreenSentinel autonomous CCTV monitoring agent",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js",
+    "demo": "node agent.js config.demo.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.1000.0",
+    "@aws-sdk/credential-providers": "^3.1000.0",
+    "ffmpeg-static": "^5.2.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

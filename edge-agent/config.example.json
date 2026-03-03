@@ -1,0 +1,51 @@
+{
+  "_comment": "GreenSentinel Edge Agent — copy this file to config.json and fill in your details",
+
+  "apiUrl": "https://4uogxqomb0.execute-api.ap-south-1.amazonaws.com/dev",
+
+  "farmId": "YOUR_FARM_ID",
+
+  "phoneNumber": "+91XXXXXXXXXX",
+
+  "cooldownMinutes": 5,
+  "nightCooldownMinutes": 2,
+  "maxDailyCallsLocal": 100,
+
+  "nightStart": 18,
+  "nightEnd": 6,
+
+  "heartbeatSeconds": 60,
+
+  "ffmpegPath": "ffmpeg",
+
+  "cameras": [
+    {
+      "_comment": "IP camera with HTTP snapshot URL (most common in India — works without ffmpeg)",
+      "id": "cam1",
+      "name": "North Gate",
+      "type": "snapshot",
+      "url": "http://192.168.1.10/cgi-bin/snapshot.cgi"
+    },
+    {
+      "_comment": "RTSP stream from NVR or IP camera — requires ffmpeg",
+      "id": "cam2",
+      "name": "South Field",
+      "type": "rtsp",
+      "url": "rtsp://admin:password@192.168.1.11:554/stream1"
+    },
+    {
+      "_comment": "USB or built-in webcam — requires ffmpeg",
+      "id": "cam3",
+      "name": "Farm Entry",
+      "type": "webcam",
+      "device": "/dev/video0"
+    },
+    {
+      "_comment": "Demo mode — MP4 file (for testing without real cameras)",
+      "id": "cam4",
+      "name": "Demo Feed",
+      "type": "file",
+      "path": "/path/to/demo-video.mp4"
+    }
+  ]
+}

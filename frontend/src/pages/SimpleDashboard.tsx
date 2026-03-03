@@ -121,15 +121,20 @@ export default function SimpleDashboard() {
     return () => clearInterval(interval);
   }, [fetchData]);
 
-  // Core values
-  const healthScore = cropHealth?.current?.healthScore || 0;
-  const ndvi = cropHealth?.current?.ndvi || 0;
+  // Core values — real satellite data only (exclude simulated records)
+  const isSimulated = (source?: string) => !source || source.toLowerCase() === 'simulated';
+  const realHistory = (cropHealth?.history || []).filter((r) => !isSimulated(r.source));
+  const currentReal = realHistory[0] ?? null;
+  const healthScore = currentReal?.healthScore ?? 0;
+  const ndvi = currentReal?.ndvi ?? 0;
+  const hasRealData = currentReal !== null;
 
   const healthStatus = useMemo(() => {
+    if (!hasRealData) return 'none';
     if (healthScore >= 60) return 'good';
     if (healthScore >= 40) return 'warning';
     return 'danger';
-  }, [healthScore]);
+  }, [healthScore, hasRealData]);
 
   const healthAdvice = useMemo(() => getHealthAdvice(healthScore, language), [healthScore, language]);
 
@@ -158,15 +163,14 @@ export default function SimpleDashboard() {
   // Rain currently or recent wet conditions
   const isWet = (weather?.precipitation ?? 0) > 0 || (weather?.consecutiveWetDays ?? 0) > 0;
 
-  // Weekly health change from history
+  // Weekly health change from real satellite history only
   const weeklyChange = useMemo(() => {
-    const history = cropHealth?.history;
-    if (!history || history.length < 2) return null;
-    const sorted = [...history].sort(
+    if (realHistory.length < 2) return null;
+    const sorted = [...realHistory].sort(
       (a, b) => new Date(a.recordDate).getTime() - new Date(b.recordDate).getTime()
     );
     return sorted[sorted.length - 1].healthScore - sorted[0].healthScore;
-  }, [cropHealth]);
+  }, [realHistory]);
 
   // Today's specific task — one actionable sentence based on real data
   const todayTask = useMemo(() => {
@@ -268,6 +272,7 @@ export default function SimpleDashboard() {
 
   // Gradient by health
   const cardGradient =
+    healthStatus === 'none' ? 'from-slate-500 to-slate-700' :
     healthStatus === 'good' ? 'from-green-500 to-green-700' :
     healthStatus === 'warning' ? 'from-amber-500 to-orange-600' :
     'from-red-500 to-red-700';
@@ -346,7 +351,7 @@ export default function SimpleDashboard() {
             </p>
             <div className="flex items-end gap-1.5">
               <span className="text-5xl font-black text-white leading-none">
-                {loading ? '--' : healthScore}
+                {loading ? '--' : hasRealData ? healthScore : '--'}
               </span>
               <span className="text-white/60 text-sm mb-1">/100</span>
             </div>
@@ -371,7 +376,7 @@ export default function SimpleDashboard() {
         <div className="bg-white/25 rounded-full h-2 mb-3 overflow-hidden">
           <motion.div
             initial={{ width: 0 }}
-            animate={{ width: `${loading ? 0 : healthScore}%` }}
+            animate={{ width: `${loading || !hasRealData ? 0 : healthScore}%` }}
             transition={{ duration: 0.8, ease: 'easeOut' }}
             className="bg-white rounded-full h-2"
           />

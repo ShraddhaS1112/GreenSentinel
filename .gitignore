@@ -76,6 +76,15 @@ secrets.json
 .local/
 local/
 
+# Large media files — serve from S3/CDN, not git
+*.mp4
+*.mov
+*.avi
+frontend/public/cameras/
+
+# Local env overrides (contains API endpoints)
+frontend/.env.development
+
 # PWA generated files
 sw.js
 workbox-*.js

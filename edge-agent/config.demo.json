@@ -1,0 +1,45 @@
+{
+  "_comment": "Demo config — uses the 4 sample videos as simulated CCTV feeds. Run: npm run demo",
+
+  "apiUrl": "https://4uogxqomb0.execute-api.ap-south-1.amazonaws.com/dev",
+
+  "farmId": "farm-bangalore-001",
+
+  "phoneNumber": "",
+
+  "cooldownMinutes": 3,
+  "nightCooldownMinutes": 3,
+  "maxDailyCallsLocal": 20,
+
+  "nightStart": 18,
+  "nightEnd": 6,
+
+  "heartbeatSeconds": 30,
+
+  "cameras": [
+    {
+      "id": "cam1",
+      "name": "North Gate",
+      "type": "file",
+      "path": "C:\\Users\\z0043h7f\\Documents\\personal\\Sudhindra\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\north-gate.mp4"
+    },
+    {
+      "id": "cam2",
+      "name": "South Field",
+      "type": "file",
+      "path": "C:\\Users\\z0043h7f\\Documents\\personal\\Sudhindra\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\south-field.mp4"
+    },
+    {
+      "id": "cam3",
+      "name": "Farm Overview",
+      "type": "file",
+      "path": "C:\\Users\\z0043h7f\\Documents\\personal\\Sudhindra\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\farm-overview.mp4"
+    },
+    {
+      "id": "cam4",
+      "name": "Farm Entry",
+      "type": "file",
+      "path": "C:\\Users\\z0043h7f\\Documents\\personal\\Sudhindra\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\farm-entry.mp4"
+    }
+  ]
+}

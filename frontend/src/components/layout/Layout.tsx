@@ -38,7 +38,7 @@ export default function Layout() {
 
   if (showSimpleMode) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-slate-50 overflow-x-hidden">
         {/* Page content - full width, no sidebar */}
         <main className="pb-24">
           <Outlet />
@@ -52,7 +52,7 @@ export default function Layout() {
 
   // Expert Mode: Full layout with sidebar (default for tablets/desktops)
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 overflow-x-hidden">
       {/* Desktop Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
