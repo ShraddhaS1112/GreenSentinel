@@ -91,11 +91,11 @@ async function apiCall<T>(
 // Farm API
 // ============================================================================
 
-export async function getFarms(userId: string = 'demo-user'): Promise<ApiResponse<Farm[]>> {
+export async function getFarms(userId: string): Promise<ApiResponse<Farm[]>> {
   return apiCall<Farm[]>(`/farms?userId=${encodeURIComponent(userId)}`);
 }
 
-export async function getFarm(farmId: string, userId: string = 'demo-user'): Promise<ApiResponse<Farm>> {
+export async function getFarm(farmId: string, userId: string): Promise<ApiResponse<Farm>> {
   return apiCall<Farm>(`/farms/${encodeURIComponent(farmId)}?userId=${encodeURIComponent(userId)}`);
 }
 
@@ -481,7 +481,7 @@ export interface IrrigationResponse {
 
 export async function getIrrigationRecommendations(
   farmId: string,
-  userId: string = 'demo-user'
+  userId: string
 ): Promise<ApiResponse<IrrigationResponse>> {
   return apiCall<IrrigationResponse>(
     `/irrigation?farmId=${encodeURIComponent(farmId)}&userId=${encodeURIComponent(userId)}`
