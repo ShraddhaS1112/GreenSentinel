@@ -71,47 +71,6 @@ interface FarmState {
 }
 
 // =============================================================================
-// MOCK DATA (Fallback for demo/offline)
-// =============================================================================
-
-const mockFarms: Farm[] = [
-  {
-    farmId: 'farm_001',
-    userId: 'demo-user',
-    name: 'Sunrise Farm',
-    location: {
-      latitude: 18.5204,
-      longitude: 73.8567,
-      address: 'Pune Rural, Maharashtra',
-      district: 'Pune',
-      state: 'Maharashtra',
-    },
-    area: 25,
-    cropType: 'Sugarcane',
-    cameras: [
-      {
-        cameraId: 'cam_001',
-        farmId: 'farm_001',
-        name: 'North Gate Camera',
-        rtspUrl: 'rtsp://192.168.1.100:554/stream',
-        status: 'connected' as CameraStatus,
-        captureInterval: 5,
-        lastFrameAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-      },
-    ],
-    alertThresholds: {
-      fire: 80,
-      human: 80,
-      animal: 75,
-    },
-    language: 'hi' as any,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-// =============================================================================
 // HELPER: Convert between API and local Farm types
 // =============================================================================
 
@@ -153,9 +112,9 @@ function localToApiFarm(farm: Farm): api.Farm {
 export const useFarmStore = create<FarmState>()(
   persist(
     (set, get) => ({
-      // Initial state
-      farms: mockFarms,
-      currentFarmId: mockFarms[0]?.farmId || null,
+      // Initial state — empty until authenticated user's farms are fetched
+      farms: [],
+      currentFarmId: null,
       threats: [],
       healthScores: new Map(),
       dashboardSummary: null,
@@ -222,7 +181,13 @@ export const useFarmStore = create<FarmState>()(
       // Async API actions
       // =========================================================================
 
-      fetchFarms: async (userId = 'demo-user') => {
+      fetchFarms: async (userId?: string) => {
+        // Require a real authenticated userId — never fall back to a shared demo account
+        if (!userId || userId.startsWith('demo')) {
+          console.warn('fetchFarms: no authenticated userId, skipping fetch');
+          set({ isLoading: false });
+          return;
+        }
         set({ isLoading: true, error: null });
         try {
           const response = await api.fetchWithCache(`farms_${userId}`, () =>
@@ -238,7 +203,6 @@ export const useFarmStore = create<FarmState>()(
               lastSyncedAt: new Date().toISOString(),
             });
           } else {
-            // No farms from API, keep local/mock data
             set({ isLoading: false });
           }
         } catch (error) {

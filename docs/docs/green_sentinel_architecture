@@ -1,0 +1,95 @@
+digraph "GreenSentinel — Digital Immune System for Indian Agriculture" {
+	graph [bgcolor=white fontcolor="#2D3436" fontname="Sans-Serif" fontsize=14 label="GreenSentinel — Digital Immune System for Indian Agriculture" nodesep=0.6 pad=0.5 rankdir=TB ranksep=0.9 splines=ortho]
+	node [fixedsize=true fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13 height=1.4 imagescale=true labelloc=b shape=box style=rounded width=1.4]
+	edge [color="#7B8894"]
+	d0aad3fa18aa4401abbd366247b760ce [label="Farmer
+(Smartphone / Browser)" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/onprem/client\user.png" shape=none]
+	"8239392b4de547ca9211a92f4edf5f58" [label="Edge Agent
+CCTV / IP Camera" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/onprem/client\client.png" shape=none]
+	subgraph "cluster_External APIs" {
+		graph [bgcolor="#E5F5FD" fontname="Sans-Serif" fontsize=12 label="External APIs" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+		f93268c163e1457bb5034cff394ffd88 [label="Element84 STAC
+Sentinel-2 NDVI" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/generic/network\firewall.png" shape=none]
+		d219a34e581e44298235af6368301128 [label="Open-Meteo
+Weather Data" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/generic/network\firewall.png" shape=none]
+		"0e9dc0c648644b22903e46fdc8031c7d" [label="Twilio
+WhatsApp Business" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/saas/communication\twilio.png" shape=none]
+	}
+	"6dd4844149e14195b5bf9e1ef2c14ebd" -> "2bb62d3dac464b1fade2cf5a61bc72a2" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13 style=dashed]
+	"017610ec1bdd4f9084b706baa302a8b6" -> "08633449beba482e9fcf495c92fa669e" [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"017610ec1bdd4f9084b706baa302a8b6" -> a53dc0a195554c62a4100e0a29f766d2 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	subgraph "cluster_AWS  ap-south-1  (Mumbai)" {
+		graph [bgcolor="#E5F5FD" fontname="Sans-Serif" fontsize=12 label="AWS  ap-south-1  (Mumbai)" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+		subgraph "cluster_Frontend Delivery" {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label="Frontend Delivery" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			"6dd4844149e14195b5bf9e1ef2c14ebd" [label="CloudFront
+E7IN6ZTW0EXV5" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/network\cloudfront.png" shape=none]
+			"2bb62d3dac464b1fade2cf5a61bc72a2" [label="S3 Bucket
+React PWA + SW" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/storage\simple-storage-service-s3.png" shape=none]
+		}
+		subgraph cluster_Authentication {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label=Authentication labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			"017610ec1bdd4f9084b706baa302a8b6" [label="Cognito User Pool
+Phone OTP" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/security\cognito.png" shape=none]
+			"08633449beba482e9fcf495c92fa669e" [label="Pre-Auth Lambda
+OTP trigger" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/compute\lambda.png" shape=none]
+			a53dc0a195554c62a4100e0a29f766d2 [label="Post-Confirm Lambda
+User bootstrap" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/compute\lambda.png" shape=none]
+		}
+		"2242abe803bc44ba92241fd2bf8f6f5d" [label="API Gateway
+REST  /dev" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/network\api-gateway.png" shape=none]
+		subgraph "cluster_Lambda Functions" {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label="Lambda Functions" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			d90bfb40939f440086a23149bab15205 [label="api-handler
+22+ routes" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/compute\lambda.png" shape=none]
+			"5c83018038234673ab689e223aaefca4" [label="satellite-processor
+Scheduled NDVI" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/compute\lambda.png" shape=none]
+			"7317a17b143c46c88bc3e6781d75c008" [label="disease-forecast
+Daily risk score" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/compute\lambda.png" shape=none]
+			a57e5057bae341cfb883f9eeddf397bb [label="alert-sender
+SNS subscriber" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/compute\lambda.png" shape=none]
+		}
+		subgraph "cluster_AWS Bedrock  (APAC Claude)" {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label="AWS Bedrock  (APAC Claude)" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			daac8048c53e453896dfd36be1b10141 [label="Claude 3 Haiku
+Fast threat triage" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/ml\sagemaker.png" shape=none]
+			"188fb8667b6444c0892de6af985151a8" [label="Claude 3.5 Sonnet v2
+Disease + deep threat" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/ml\sagemaker.png" shape=none]
+		}
+		subgraph "cluster_DynamoDB Tables" {
+			graph [bgcolor="#EBF3E7" fontname="Sans-Serif" fontsize=12 label="DynamoDB Tables" labeljust=l pencolor="#AEB6BE" rankdir=LR shape=box style=rounded]
+			fbbd446bdff24c5aba39467de5412095 [label=farms height=1.9 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/database\dynamodb.png" shape=none]
+			"6c9fcd1dd9cf487fb0d18d21b2b28244" [label=alerts height=1.9 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/database\dynamodb.png" shape=none]
+			fe5602c4e6874296998a380bf042a0fe [label="crop-health" height=1.9 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/database\dynamodb.png" shape=none]
+			"435ee9ec5dc34cf3b26b1b3add7043f6" [label="disease-scans" height=1.9 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/database\dynamodb.png" shape=none]
+		}
+		d6b64bfba706436cb4d27ab64e01177a [label="S3 Bucket
+Scan Images" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/storage\simple-storage-service-s3.png" shape=none]
+		"0bb25f7522a74507b917547069e6de2e" [label="SNS Topic
+alert-topic" height=2.3 image="C:\Users\z0043h7f\AppData\Local\Programs\Python\Python313\Lib\site-packages\resources/aws/integration\simple-notification-service-sns.png" shape=none]
+	}
+	d0aad3fa18aa4401abbd366247b760ce -> "6dd4844149e14195b5bf9e1ef2c14ebd" [label=HTTPS dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d0aad3fa18aa4401abbd366247b760ce -> "017610ec1bdd4f9084b706baa302a8b6" [label="Phone OTP" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d0aad3fa18aa4401abbd366247b760ce -> "2242abe803bc44ba92241fd2bf8f6f5d" [label="JWT Bearer" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"8239392b4de547ca9211a92f4edf5f58" -> "2242abe803bc44ba92241fd2bf8f6f5d" [label="POST /threat-detect
+base64 frame" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"2242abe803bc44ba92241fd2bf8f6f5d" -> d90bfb40939f440086a23149bab15205 [dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d90bfb40939f440086a23149bab15205 -> fbbd446bdff24c5aba39467de5412095 [label=CRUD dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d90bfb40939f440086a23149bab15205 -> "6c9fcd1dd9cf487fb0d18d21b2b28244" [label="write/read" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d90bfb40939f440086a23149bab15205 -> fe5602c4e6874296998a380bf042a0fe [label=read dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d90bfb40939f440086a23149bab15205 -> "435ee9ec5dc34cf3b26b1b3add7043f6" [label="scan result" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d90bfb40939f440086a23149bab15205 -> d6b64bfba706436cb4d27ab64e01177a [label="upload image" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d90bfb40939f440086a23149bab15205 -> daac8048c53e453896dfd36be1b10141 [label="Stage 1 triage" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	daac8048c53e453896dfd36be1b10141 -> "188fb8667b6444c0892de6af985151a8" [label="threat ≥ medium →" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d90bfb40939f440086a23149bab15205 -> "188fb8667b6444c0892de6af985151a8" [label="disease scan" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	d90bfb40939f440086a23149bab15205 -> "0bb25f7522a74507b917547069e6de2e" [label="publish alert" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"5c83018038234673ab689e223aaefca4" -> f93268c163e1457bb5034cff394ffd88 [label="NDVI query" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"5c83018038234673ab689e223aaefca4" -> fe5602c4e6874296998a380bf042a0fe [label="write healthScore" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"7317a17b143c46c88bc3e6781d75c008" -> d219a34e581e44298235af6368301128 [label="weather data" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"7317a17b143c46c88bc3e6781d75c008" -> fbbd446bdff24c5aba39467de5412095 [label="read farms" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"7317a17b143c46c88bc3e6781d75c008" -> "6c9fcd1dd9cf487fb0d18d21b2b28244" [label="write forecast" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"0bb25f7522a74507b917547069e6de2e" -> a57e5057bae341cfb883f9eeddf397bb [label=trigger dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	a57e5057bae341cfb883f9eeddf397bb -> fbbd446bdff24c5aba39467de5412095 [label="lookup phone" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	a57e5057bae341cfb883f9eeddf397bb -> "0e9dc0c648644b22903e46fdc8031c7d" [label="WhatsApp message" dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+	"0e9dc0c648644b22903e46fdc8031c7d" -> d0aad3fa18aa4401abbd366247b760ce [label=delivery dir=forward fontcolor="#2D3436" fontname="Sans-Serif" fontsize=13]
+}

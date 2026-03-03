@@ -1,0 +1,93 @@
+/* GreenSentinel — Architecture v5 — explicit positions via neato */
+digraph GreenSentinel {
+graph [
+    label="GreenSentinel  —  Digital Immune System for Indian Agriculture"
+    labelloc=b
+    fontname="Arial"
+    fontsize=14
+    bgcolor="white"
+    pad=0.5
+    splines=true
+    overlap=false
+    size="18,11"
+    ratio=fill
+]
+node [
+    fontname="Arial"
+    fontsize=10
+    style="filled,rounded"
+    shape=box
+    margin="0.16,0.10"
+    width=1.55
+    height=0.55
+]
+edge [
+    fontname="Arial"
+    fontsize=9
+    arrowsize=0.7
+]
+
+/* ════ Column 0 — Actors  x=0 ════════════════════════════════════ */
+farmer  [label="👨 Farmer\n(Smartphone)"    fillcolor="#C8E6C9" color="#388E3C" fontcolor="#1B5E20" pos="0,6!"]
+camera  [label="📷 Edge Agent\n(CCTV)"      fillcolor="#FFCCBC" color="#E64A19" fontcolor="#BF360C" pos="0,3!"]
+
+/* ════ Column 1 — Entry  x=3 ═════════════════════════════════════ */
+cloudfront [label="CloudFront CDN\n+ S3 PWA"    fillcolor="#FFE082" color="#F9A825" fontcolor="#E65100" pos="3,8!"]
+cognito    [label="Cognito\nPhone OTP"           fillcolor="#F8BBD0" color="#C2185B" fontcolor="#880E4F" pos="3,6!"]
+apigw      [label="API Gateway\nREST /dev"       fillcolor="#B3E5FC" color="#0288D1" fontcolor="#01579B" pos="3,4!"]
+
+/* ════ Column 2 — Lambda  x=6.5 ══════════════════════════════════ */
+api_fn   [label="api-handler\n22 routes"             fillcolor="#FFCC80" color="#EF6C00" fontcolor="#BF360C" pos="6.5,7!"]
+sat_fn   [label="satellite-processor\nNDVI ingestion" fillcolor="#FFCC80" color="#EF6C00" fontcolor="#BF360C" pos="6.5,5!"]
+fore_fn  [label="disease-forecast\nDaily risk score"  fillcolor="#FFCC80" color="#EF6C00" fontcolor="#BF360C" pos="6.5,3!"]
+alert_fn [label="alert-sender\nSNS subscriber"        fillcolor="#FFCC80" color="#EF6C00" fontcolor="#BF360C" pos="6.5,1!"]
+
+/* ════ Column 3 — AI  x=10 ═══════════════════════════════════════ */
+haiku  [label="Claude 3 Haiku\nFast triage · Stage 1"    fillcolor="#E1BEE7" color="#7B1FA2" fontcolor="#4A148C" pos="10,8!"]
+sonnet [label="Claude 3.5 Sonnet v2\nDisease + Threat"   fillcolor="#CE93D8" color="#6A1B9A" fontcolor="#4A148C" pos="10,6.5!"]
+
+/* ════ Column 3 — DynamoDB  x=10 ════════════════════════════════ */
+farms_db  [label="DynamoDB · farms"         fillcolor="#A5D6A7" color="#2E7D32" fontcolor="#1B5E20" shape=cylinder pos="10,5!"]
+health_db [label="DynamoDB · crop-health"   fillcolor="#A5D6A7" color="#2E7D32" fontcolor="#1B5E20" shape=cylinder pos="10,3.8!"]
+alerts_db [label="DynamoDB · alerts"        fillcolor="#A5D6A7" color="#2E7D32" fontcolor="#1B5E20" shape=cylinder pos="10,2.6!"]
+scans_db  [label="DynamoDB · disease-scans" fillcolor="#A5D6A7" color="#2E7D32" fontcolor="#1B5E20" shape=cylinder pos="10,1.4!"]
+scan_s3   [label="S3 · scan-images"         fillcolor="#C8E6C9" color="#388E3C" fontcolor="#1B5E20"              pos="10,0.2!"]
+
+/* ════ Column 4 — External / Messaging  x=14 ════════════════════ */
+sns       [label="SNS Topic\nalert-topic"        fillcolor="#EF9A9A" color="#C62828" fontcolor="#B71C1C" pos="14,1!"]
+twilio    [label="Twilio\nWhatsApp Business"     fillcolor="#F48FB1" color="#AD1457" fontcolor="#880E4F" pos="14,-0.3!"]
+element84 [label="Element84 STAC\nSentinel-2"   fillcolor="#CFD8DC" color="#546E7A" fontcolor="#263238" pos="14,5!"]
+openmeteo [label="Open-Meteo\nWeather API"       fillcolor="#CFD8DC" color="#546E7A" fontcolor="#263238" pos="14,3!"]
+
+/* ════ Edges ══════════════════════════════════════════════════════ */
+
+farmer    -> cloudfront [label="HTTPS"           color="#1565C0" fontcolor="#1565C0"]
+farmer    -> cognito    [label="Phone OTP"        color="#880E4F" fontcolor="#880E4F"]
+farmer    -> apigw      [label="JWT calls"        color="#1565C0" fontcolor="#1565C0"]
+camera    -> apigw      [label="/threat-detect"   color="#B71C1C" fontcolor="#B71C1C" style=dashed]
+
+apigw -> api_fn         [color="#FF6F00" penwidth=2.5]
+
+api_fn -> haiku         [label="Stage 1"          color="#7B1FA2" fontcolor="#7B1FA2"]
+api_fn -> sonnet        [label="disease scan"     color="#7B1FA2" fontcolor="#7B1FA2"]
+haiku  -> sonnet        [label="escalate"         color="#7B1FA2" fontcolor="#7B1FA2" style=dashed]
+
+api_fn -> farms_db      [color="#2E7D32"]
+api_fn -> health_db     [color="#2E7D32"]
+api_fn -> alerts_db     [color="#2E7D32"]
+api_fn -> scans_db      [color="#2E7D32"]
+api_fn -> scan_s3       [color="#2E7D32"]
+api_fn -> sns           [label="publish"          color="#C62828" fontcolor="#C62828"]
+
+sat_fn  -> element84    [label="NDVI query"       color="#0277BD" fontcolor="#0277BD"]
+sat_fn  -> health_db    [color="#0277BD"]
+
+fore_fn -> openmeteo    [label="weather"          color="#00695C" fontcolor="#00695C"]
+fore_fn -> farms_db     [color="#00695C"]
+fore_fn -> alerts_db    [color="#00695C"]
+
+sns      -> alert_fn    [color="#C62828" penwidth=2]
+alert_fn -> farms_db    [color="#C62828"]
+alert_fn -> twilio      [label="send"             color="#C62828" fontcolor="#C62828"]
+twilio   -> farmer      [label="WhatsApp delivery" color="#C62828" fontcolor="#C62828" style=dashed]
+}

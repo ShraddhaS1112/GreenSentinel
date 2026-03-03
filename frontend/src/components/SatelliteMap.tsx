@@ -116,11 +116,14 @@ export default function SatelliteMap({
       </div>
     `);
 
-    // Add farm boundary rectangle if bbox provided
-    if (bbox) {
+    // Add farm boundary rectangle if bbox provided and all 4 values are finite numbers
+    const bboxValid = Array.isArray(bbox) &&
+      bbox.length >= 4 &&
+      bbox.slice(0, 4).every((v) => typeof v === 'number' && isFinite(v));
+    if (bboxValid) {
       const bounds: L.LatLngBoundsExpression = [
-        [bbox[1], bbox[0]], // [minLat, minLng]
-        [bbox[3], bbox[2]], // [maxLat, maxLng]
+        [bbox![1], bbox![0]], // [minLat, minLng]
+        [bbox![3], bbox![2]], // [maxLat, maxLng]
       ];
       L.rectangle(bounds, {
         color: getHealthColor(),
