@@ -1,0 +1,5 @@
+{
+  "specId": "rtsp-stream-display",
+  "workflowType": "requirements-first",
+  "specType": "bugfix"
+}
