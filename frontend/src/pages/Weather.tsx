@@ -29,6 +29,7 @@ import {
   getWeatherIcon,
   WeatherData,
 } from '@/services/weatherService';
+import { useTranslation } from '@/stores/preferencesStore';
 
 const weatherIcons: Record<number, typeof Sun> = {
   0: Sun,
@@ -52,6 +53,7 @@ const weatherIcons: Record<number, typeof Sun> = {
 };
 
 export default function Weather() {
+  const { t } = useTranslation();
   const { getCurrentFarm } = useFarmStore();
   const farm = getCurrentFarm();
   const [selectedDay, setSelectedDay] = useState(0);
@@ -93,9 +95,9 @@ export default function Weather() {
       <div className="page-container">
         <div className="flex flex-col items-center justify-center h-64">
           <RefreshCw className="w-8 h-8 text-primary-500 animate-spin" />
-          <p className="mt-4 text-slate-600">Loading weather data...</p>
+          <p className="mt-4 text-slate-600">{t('weather.loading')}</p>
           <p className="text-sm text-slate-400 mt-1">
-            Fetching from Open-Meteo API
+            {t('weather.fetchingFrom')}
           </p>
         </div>
       </div>
@@ -109,13 +111,13 @@ export default function Weather() {
           <div className="flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
             <div>
-              <h3 className="font-semibold text-red-800">Failed to load weather</h3>
+              <h3 className="font-semibold text-red-800">{t('weather.failed')}</h3>
               <p className="text-red-600 text-sm mt-1">{error}</p>
               <button
                 onClick={loadWeather}
                 className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
               >
-                Retry
+                {t('common.retry')}
               </button>
             </div>
           </div>
@@ -131,10 +133,10 @@ export default function Weather() {
       {/* Header */}
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Weather Intelligence</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t('weather.title')}</h1>
           <p className="text-slate-500 mt-1 flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            {farm?.name || 'Your location'} ({latitude.toFixed(2)}°N, {longitude.toFixed(2)}°E)
+            {farm?.name || t('weather.yourLocation')} ({latitude.toFixed(2)}°N, {longitude.toFixed(2)}°E)
           </p>
         </div>
         <div className="text-right">
@@ -144,11 +146,11 @@ export default function Weather() {
             className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 bg-slate-100 rounded-lg"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t('common.refresh')}
           </button>
           {lastUpdated && (
             <p className="text-xs text-slate-400 mt-1">
-              Updated {lastUpdated.toLocaleTimeString()}
+              {t('weather.updatedAt', { time: lastUpdated.toLocaleTimeString() })}
             </p>
           )}
         </div>
@@ -158,7 +160,7 @@ export default function Weather() {
       <div className="mb-4 flex items-center gap-2">
         <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
           <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          Live Data from Open-Meteo
+          {t('weather.liveData')}
         </span>
       </div>
 
@@ -170,12 +172,12 @@ export default function Weather() {
       >
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-blue-100 text-sm">Current Weather</p>
+            <p className="text-blue-100 text-sm">{t('weather.currentWeather')}</p>
             <div className="flex items-center gap-3 mt-2">
               <span className="text-5xl font-bold">{Math.round(weather.current.temperature)}°</span>
               <div>
                 <p className="text-lg font-medium">{weather.current.weatherDescription}</p>
-                <p className="text-blue-200 text-sm">Feels like {Math.round(weather.current.feelsLike)}°</p>
+                <p className="text-blue-200 text-sm">{t('weather.feelsLike', { temp: Math.round(weather.current.feelsLike) })}</p>
               </div>
             </div>
           </div>
@@ -185,10 +187,10 @@ export default function Weather() {
         </div>
 
         <div className="grid grid-cols-4 gap-4 mt-6 pt-4 border-t border-blue-400/30">
-          <WeatherStat icon={Droplets} label="Humidity" value={`${weather.current.humidity}%`} />
-          <WeatherStat icon={Wind} label="Wind" value={`${Math.round(weather.current.windSpeed)} km/h`} />
-          <WeatherStat icon={Cloud} label="Cloud" value={`${weather.current.cloudCover}%`} />
-          <WeatherStat icon={Sun} label="UV Index" value={Math.round(weather.current.uvIndex).toString()} />
+          <WeatherStat icon={Droplets} label={t('weather.humidity')} value={`${weather.current.humidity}%`} />
+          <WeatherStat icon={Wind} label={t('weather.wind')} value={`${Math.round(weather.current.windSpeed)} km/h`} />
+          <WeatherStat icon={Cloud} label={t('weather.cloud')} value={`${weather.current.cloudCover}%`} />
+          <WeatherStat icon={Sun} label={t('weather.uvIndex')} value={Math.round(weather.current.uvIndex).toString()} />
         </div>
       </motion.div>
 
@@ -231,7 +233,7 @@ export default function Weather() {
                     alert.severity === 'high' ? 'text-orange-600' :
                     'text-amber-600'
                   }`}>
-                    <strong>Advisory:</strong> {alert.advisory}
+                    <strong>{t('weather.advisory')}</strong> {alert.advisory}
                   </p>
                 </div>
               </div>
@@ -249,7 +251,7 @@ export default function Weather() {
       >
         <h2 className="section-header flex items-center gap-2">
           <Calendar className="w-5 h-5 text-slate-400" />
-          7-Day Forecast
+          {t('weather.forecast7')}
         </h2>
 
         <div className="flex gap-2 overflow-x-auto pb-2">
@@ -269,7 +271,7 @@ export default function Weather() {
                 }`}
               >
                 <p className={`text-xs font-medium ${isSelected ? 'text-primary-700' : 'text-slate-500'}`}>
-                  {index === 0 ? 'Today' : date.toLocaleDateString('en-US', { weekday: 'short' })}
+                  {index === 0 ? t('weather.today') : date.toLocaleDateString('en-US', { weekday: 'short' })}
                 </p>
                 <WeatherIcon className={`w-8 h-8 mx-auto my-2 ${
                   day.weatherCode >= 51 ? 'text-blue-500' : 'text-yellow-500'
@@ -294,25 +296,25 @@ export default function Weather() {
           <div className="mt-4 pt-4 border-t border-slate-100">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-xs text-slate-500">Temperature Range</p>
+                <p className="text-xs text-slate-500">{t('weather.tempRange')}</p>
                 <p className="font-semibold text-slate-900">
                   {Math.round(selectedForecast.tempMin)}° - {Math.round(selectedForecast.tempMax)}°
                 </p>
               </div>
               <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-xs text-slate-500">Rain Chance</p>
+                <p className="text-xs text-slate-500">{t('weather.rainChance')}</p>
                 <p className="font-semibold text-slate-900">
                   {selectedForecast.precipitationProbability}%
                 </p>
               </div>
               <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-xs text-slate-500">Expected Rain</p>
+                <p className="text-xs text-slate-500">{t('weather.expectedRain')}</p>
                 <p className="font-semibold text-slate-900">
                   {selectedForecast.precipitation.toFixed(1)} mm
                 </p>
               </div>
               <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-xs text-slate-500">ET₀ (Evapotranspiration)</p>
+                <p className="text-xs text-slate-500">{t('weather.et0Detail')}</p>
                 <p className="font-semibold text-slate-900">
                   {selectedForecast.et0.toFixed(1)} mm
                 </p>
@@ -331,36 +333,36 @@ export default function Weather() {
       >
         <h2 className="section-header flex items-center gap-2">
           <Leaf className="w-5 h-5 text-slate-400" />
-          Agricultural Metrics
+          {t('weather.agriMetrics')}
         </h2>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <MetricCard
             icon={Thermometer}
-            label="Growing Degree Days"
+            label={t('weather.gdd')}
             value={weather.agricultural.gdd.toString()}
-            sublabel="This week"
+            sublabel={t('weather.thisWeek')}
             color="text-orange-500"
           />
           <MetricCard
             icon={Droplets}
-            label="Evapotranspiration"
+            label={t('weather.evapotranspiration')}
             value={`${weather.agricultural.et0} mm`}
-            sublabel="Daily ET₀"
+            sublabel={t('weather.dailyEt')}
             color="text-blue-500"
           />
           <MetricCard
             icon={TrendingUp}
-            label="Heat Units"
+            label={t('weather.heatUnits')}
             value={weather.agricultural.heatUnits.toString()}
-            sublabel="This week"
+            sublabel={t('weather.thisWeek')}
             color="text-red-500"
           />
           <MetricCard
             icon={Clock}
-            label="Chill Hours"
+            label={t('weather.chillHours')}
             value={weather.agricultural.chillHours.toString()}
-            sublabel="48-hour forecast"
+            sublabel={t('weather.48hForecast')}
             color="text-cyan-500"
           />
         </div>
@@ -376,7 +378,7 @@ export default function Weather() {
         >
           <h2 className="section-header flex items-center gap-2">
             <Clock className="w-5 h-5 text-slate-400" />
-            Optimal Spray Window
+            {t('weather.sprayWindow')}
           </h2>
 
           {weather.agricultural.sprayWindow ? (
@@ -387,14 +389,14 @@ export default function Weather() {
                     {new Date(weather.agricultural.sprayWindow.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(weather.agricultural.sprayWindow.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                   <p className="text-green-600 text-sm mt-1">
-                    Best time for spraying
+                    {t('weather.bestSpray')}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-green-700">
                     {weather.agricultural.sprayWindow.confidence}%
                   </p>
-                  <p className="text-green-600 text-xs">Confidence</p>
+                  <p className="text-green-600 text-xs">{t('common.confidence')}</p>
                 </div>
               </div>
               <p className="text-green-700 text-sm mt-3">
@@ -403,9 +405,9 @@ export default function Weather() {
             </div>
           ) : (
             <div className="bg-amber-50 rounded-lg p-4">
-              <p className="text-amber-800 font-medium">No suitable spray window found</p>
+              <p className="text-amber-800 font-medium">{t('weather.noSprayWindow')}</p>
               <p className="text-amber-600 text-sm mt-1">
-                Check forecast for better conditions
+                {t('weather.checkForecast')}
               </p>
             </div>
           )}
@@ -419,7 +421,7 @@ export default function Weather() {
         >
           <h2 className="section-header flex items-center gap-2">
             <Umbrella className="w-5 h-5 text-slate-400" />
-            Irrigation Advisory
+            {t('weather.irrigationAdvisory')}
           </h2>
 
           <div className={`rounded-lg p-4 ${
@@ -443,14 +445,14 @@ export default function Weather() {
               {weather.agricultural.irrigationAdvisory}
             </p>
             <p className="text-slate-600 text-sm mt-2">
-              Based on real-time weather forecast and ET₀ calculations
+              {t('weather.basedOn')}
             </p>
           </div>
 
           {weather.agricultural.frostRisk && (
             <div className="mt-3 bg-red-50 rounded-lg p-3 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-500" />
-              <span className="text-red-700 font-medium">Frost risk detected in forecast</span>
+              <span className="text-red-700 font-medium">{t('weather.frostRisk')}</span>
             </div>
           )}
         </motion.div>

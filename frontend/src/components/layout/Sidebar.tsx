@@ -18,26 +18,28 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useFarmStore } from '@/stores/farmStore';
+import { useTranslation } from '@/stores/preferencesStore';
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const navItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { path: '/threats', label: 'Threat History', icon: AlertTriangle },
-  { path: '/health', label: 'Crop Health', icon: Leaf },
-  { path: '/scanner', label: 'Disease Scanner', icon: Bug },
-  { path: '/weather', label: 'Weather', icon: Cloud },
-  { path: '/irrigation', label: 'Irrigation', icon: Droplets },
-  { path: '/farms', label: 'Farm Management', icon: Building2 },
-  { path: '/settings', label: 'Settings', icon: Settings },
-];
-
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const { t } = useTranslation();
   const { farms, currentFarmId, setCurrentFarm, getCurrentFarm } = useFarmStore();
   const currentFarm = getCurrentFarm();
+
+  const navItems = [
+    { path: '/', label: t('nav.dashboard'), icon: LayoutDashboard },
+    { path: '/threats', label: t('nav.threatHistory'), icon: AlertTriangle },
+    { path: '/health', label: t('nav.cropHealth'), icon: Leaf },
+    { path: '/scanner', label: t('nav.diseaseScanner'), icon: Bug },
+    { path: '/weather', label: t('nav.weather'), icon: Cloud },
+    { path: '/irrigation', label: t('nav.irrigation'), icon: Droplets },
+    { path: '/farms', label: t('nav.farmManagement'), icon: Building2 },
+    { path: '/settings', label: t('nav.settings'), icon: Settings },
+  ];
 
   return (
     <>
@@ -82,7 +84,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         {/* Farm selector */}
         <div className="p-4 border-b border-slate-200">
           <label className="text-xs font-medium text-slate-500 uppercase tracking-wider">
-            Current Farm
+            {t('common.currentFarm')}
           </label>
           <select
             value={currentFarmId || ''}
@@ -132,10 +134,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-900 truncate">
-                {currentFarm?.name || 'No farm selected'}
+                {currentFarm?.name || t('common.noFarmSelected')}
               </p>
               <p className="text-xs text-slate-500">
-                {currentFarm?.cameras.length || 0} cameras
+                {currentFarm?.cameras.length || 0} {t('common.cameras')}
               </p>
             </div>
           </div>

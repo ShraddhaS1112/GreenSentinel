@@ -26,18 +26,20 @@ import { CameraStatus } from '@green-sentinel/shared';
 import type { Camera as CameraType } from '@green-sentinel/shared';
 import toast from 'react-hot-toast';
 import LiveCamera from '@/components/LiveCamera';
+import { useTranslation } from '@/stores/preferencesStore';
 
 const statusConfig: Record<
   CameraStatus,
-  { label: string; color: string; icon: typeof Wifi }
+  { labelKey: string; color: string; icon: typeof Wifi }
 > = {
-  connected: { label: 'Connected', color: 'text-green-600 bg-green-100', icon: Wifi },
-  disconnected: { label: 'Disconnected', color: 'text-slate-600 bg-slate-100', icon: WifiOff },
-  connecting: { label: 'Connecting', color: 'text-blue-600 bg-blue-100', icon: Wifi },
-  error: { label: 'Error', color: 'text-red-600 bg-red-100', icon: AlertCircle },
+  connected: { labelKey: 'common.connected', color: 'text-green-600 bg-green-100', icon: Wifi },
+  disconnected: { labelKey: 'common.disconnected', color: 'text-slate-600 bg-slate-100', icon: WifiOff },
+  connecting: { labelKey: 'common.connecting', color: 'text-blue-600 bg-blue-100', icon: Wifi },
+  error: { labelKey: 'common.error', color: 'text-red-600 bg-red-100', icon: AlertCircle },
 };
 
 export default function CameraManagement() {
+  const { t } = useTranslation();
   const { farmId } = useParams<{ farmId: string }>();
   const { farms, addCamera, removeCamera, updateCameraStatus } = useFarmStore();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -49,12 +51,12 @@ export default function CameraManagement() {
       <div className="page-container">
         <div className="empty-state">
           <AlertCircle className="empty-state-icon" />
-          <h2 className="empty-state-title">Farm Not Found</h2>
+          <h2 className="empty-state-title">{t('cameras.farmNotFound')}</h2>
           <p className="empty-state-description">
-            The requested farm could not be found.
+            {t('cameras.backToFarms')}
           </p>
           <Link to="/farms" className="btn-primary mt-4">
-            Back to Farms
+            {t('common.back')}
           </Link>
         </div>
       </div>
@@ -64,7 +66,7 @@ export default function CameraManagement() {
   const handleDelete = (cameraId: string, cameraName: string) => {
     if (confirm(`Are you sure you want to remove "${cameraName}"?`)) {
       removeCamera(farm.farmId, cameraId);
-      toast.success('Camera removed');
+      toast.success(t('cameras.cameraRemoved'));
     }
   };
 
@@ -98,7 +100,7 @@ export default function CameraManagement() {
         </div>
         <button onClick={() => setShowAddModal(true)} className="btn-primary">
           <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">Add Camera</span>
+          <span className="hidden sm:inline">{t('cameras.addCamera')}</span>
         </button>
       </div>
 
@@ -106,7 +108,7 @@ export default function CameraManagement() {
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-slate-900 mb-3 flex items-center gap-2">
           <Camera className="w-5 h-5 text-green-600" />
-          Quick Scan
+          {t('cameras.quickScan')}
         </h2>
         <LiveCamera
           farmId={farm.farmId}
@@ -132,14 +134,14 @@ export default function CameraManagement() {
         <div className="card text-center py-12">
           <Camera className="w-12 h-12 text-slate-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-slate-700 mb-2">
-            No cameras configured
+            {t('cameras.noCameras')}
           </h3>
           <p className="text-slate-500 mb-4">
-            Add IP cameras to enable threat detection
+            {t('cameras.addFirstCamera')}
           </p>
           <button onClick={() => setShowAddModal(true)} className="btn-primary">
             <Plus className="w-5 h-5" />
-            Add Your First Camera
+            {t('cameras.addFirstCameraBtn')}
           </button>
         </div>
       ) : (
@@ -202,12 +204,12 @@ export default function CameraManagement() {
                     {camera.status === 'connected' ? (
                       <>
                         <Pause className="w-4 h-4" />
-                        <span className="hidden sm:inline">Stop</span>
+                        <span className="hidden sm:inline">{t('cameras.stop')}</span>
                       </>
                     ) : (
                       <>
                         <Play className="w-4 h-4" />
-                        <span className="hidden sm:inline">Start</span>
+                        <span className="hidden sm:inline">{t('cameras.start')}</span>
                       </>
                     )}
                   </button>
@@ -237,7 +239,7 @@ export default function CameraManagement() {
           onAdd={(camera) => {
             addCamera(farm.farmId, camera);
             setShowAddModal(false);
-            toast.success('Camera added successfully!');
+            toast.success(t('cameras.cameraAdded'));
           }}
         />
       )}
@@ -250,6 +252,7 @@ export default function CameraManagement() {
 // =============================================================================
 
 function StatusBadge({ status }: { status: CameraStatus }) {
+  const { t } = useTranslation();
   const config = statusConfig[status];
   const Icon = config.icon;
 
@@ -258,7 +261,7 @@ function StatusBadge({ status }: { status: CameraStatus }) {
       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}
     >
       <Icon className="w-3 h-3" />
-      {config.label}
+      {t(config.labelKey)}
     </span>
   );
 }
@@ -272,6 +275,7 @@ function AddCameraModal({
   onClose: () => void;
   onAdd: (camera: CameraType) => void;
 }) {
+  const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -318,15 +322,15 @@ function AddCameraModal({
         className="bg-white rounded-2xl shadow-xl max-w-lg w-full"
       >
         <div className="p-6 border-b border-slate-200">
-          <h2 className="text-xl font-semibold text-slate-900">Add Camera</h2>
+          <h2 className="text-xl font-semibold text-slate-900">{t('cameras.modalTitle')}</h2>
           <p className="text-slate-500 text-sm mt-1">
-            Connect an IP camera for monitoring
+            {t('cameras.modalSubtitle')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="label">Camera Name *</label>
+            <label className="label">{t('cameras.cameraName')} *</label>
             <input
               type="text"
               value={formData.name}
@@ -340,7 +344,7 @@ function AddCameraModal({
           </div>
 
           <div>
-            <label className="label">RTSP URL *</label>
+            <label className="label">{t('cameras.rtspUrl')} *</label>
             <input
               type="text"
               value={formData.rtspUrl}
@@ -358,7 +362,7 @@ function AddCameraModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Username</label>
+              <label className="label">{t('cameras.username')}</label>
               <input
                 type="text"
                 value={formData.username}
@@ -370,7 +374,7 @@ function AddCameraModal({
               />
             </div>
             <div>
-              <label className="label">Password</label>
+              <label className="label">{t('cameras.password')}</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -397,7 +401,7 @@ function AddCameraModal({
           </div>
 
           <div>
-            <label className="label">Capture Interval</label>
+            <label className="label">{t('cameras.captureInterval')}</label>
             <select
               value={formData.captureInterval}
               onChange={(e) =>
@@ -405,8 +409,8 @@ function AddCameraModal({
               }
               className="input"
             >
-              <option value="5">Every 5 seconds</option>
-              <option value="10">Every 10 seconds</option>
+              <option value="5">{t('cameras.5sec')}</option>
+              <option value="10">{t('cameras.10sec')}</option>
             </select>
             <p className="text-xs text-slate-500 mt-1">
               More frequent captures = faster detection but higher costs
@@ -415,10 +419,10 @@ function AddCameraModal({
 
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="btn-primary flex-1">
-              Add Camera
+              {t('cameras.addCamera')}
             </button>
           </div>
         </form>

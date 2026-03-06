@@ -22,7 +22,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { useFarmStore } from '@/stores/farmStore';
-import { usePreferencesStore } from '@/stores/preferencesStore';
+import { useTranslation } from '@/stores/preferencesStore';
 import { fetchWeather, WeatherData } from '@/services/weatherService';
 
 // Crop water needs (mm/day in peak season)
@@ -47,8 +47,8 @@ interface SimpleAdvice {
 }
 
 export default function IrrigationPlanner() {
+  const { t, language } = useTranslation();
   const { getCurrentFarm } = useFarmStore();
-  const { language } = usePreferencesStore();
   const farm = getCurrentFarm();
 
   const [loading, setLoading] = useState(true);
@@ -102,10 +102,8 @@ export default function IrrigationPlanner() {
     if (rainToday || rainTomorrow) {
       return {
         action: 'skip_rain',
-        title: language === 'hi' ? 'बारिश की उम्मीद - पानी न दें' : 'Rain Expected - Skip Watering',
-        message: language === 'hi'
-          ? `${rainToday ? 'आज' : 'कल'} बारिश होने की संभावना है। पानी बचाएं।`
-          : `Rain ${rainToday ? 'today' : 'tomorrow'} will water your crops. Save water!`,
+        title: t('irrigation.rainExpected'),
+        message: t(rainToday ? 'irrigation.msgRainToday' : 'irrigation.msgRainTomorrow'),
         color: 'text-blue-700',
         bgColor: 'bg-blue-50 border-blue-200',
         icon: 'rain',
@@ -115,10 +113,8 @@ export default function IrrigationPlanner() {
     if (recentRain && lastWateredDays < 2) {
       return {
         action: 'wait',
-        title: language === 'hi' ? 'पर्याप्त नमी है' : 'Soil Has Enough Water',
-        message: language === 'hi'
-          ? 'हाल ही में बारिश हुई है। 1-2 दिन इंतजार करें।'
-          : 'Recent rain has watered the soil. Wait 1-2 days before watering.',
+        title: t('irrigation.soilWet'),
+        message: t('irrigation.msgSoilWet'),
         color: 'text-green-700',
         bgColor: 'bg-green-50 border-green-200',
         icon: 'check',
@@ -128,10 +124,8 @@ export default function IrrigationPlanner() {
     if (isVeryHot || (isHot && lastWateredDays >= 2)) {
       return {
         action: 'water_now',
-        title: language === 'hi' ? 'अभी पानी दें!' : 'Water Your Crops Now!',
-        message: language === 'hi'
-          ? `तापमान ${today.tempMax}°C है। पौधों को तुरंत पानी चाहिए।`
-          : `Temperature is ${today.tempMax}°C. Your plants need water immediately.`,
+        title: t('irrigation.waterNow'),
+        message: t('irrigation.msgWaterNow', { temp: today.tempMax }),
         color: 'text-red-700',
         bgColor: 'bg-red-50 border-red-200',
         icon: 'alert',
@@ -141,10 +135,8 @@ export default function IrrigationPlanner() {
     if (lastWateredDays >= 3 || (lastWateredDays >= 2 && today.et0 > crop.high)) {
       return {
         action: 'water_soon',
-        title: language === 'hi' ? 'आज पानी देना चाहिए' : 'Water Today',
-        message: language === 'hi'
-          ? `${lastWateredDays} दिन से पानी नहीं दिया। आज शाम पानी दें।`
-          : `Last watered ${lastWateredDays} days ago. Water this evening.`,
+        title: t('irrigation.waterToday'),
+        message: t('irrigation.msgWaterSoon', { days: lastWateredDays }),
         color: 'text-orange-700',
         bgColor: 'bg-orange-50 border-orange-200',
         icon: 'droplet',
@@ -153,15 +145,13 @@ export default function IrrigationPlanner() {
 
     return {
       action: 'wait',
-      title: language === 'hi' ? 'अभी पानी की जरूरत नहीं' : 'No Watering Needed Now',
-      message: language === 'hi'
-        ? 'मिट्टी में पर्याप्त नमी है। कल फिर जांचें।'
-        : 'Soil has adequate moisture. Check again tomorrow.',
+      title: t('irrigation.noWaterNeeded'),
+      message: t('irrigation.msgNoWater'),
       color: 'text-green-700',
       bgColor: 'bg-green-50 border-green-200',
       icon: 'check',
     };
-  }, [weather, cropType, lastWateredDays, language]);
+  }, [weather, cropType, lastWateredDays, t]);
 
   // Weather summary
   const weatherSummary = useMemo(() => {
@@ -184,7 +174,7 @@ export default function IrrigationPlanner() {
         <div className="flex flex-col items-center justify-center h-64">
           <RefreshCw className="w-8 h-8 text-primary-500 animate-spin" />
           <p className="mt-4 text-slate-600">
-            {language === 'hi' ? 'मौसम डेटा लोड हो रहा है...' : 'Loading weather data...'}
+            {t('irrigation.loading')}
           </p>
         </div>
       </div>
@@ -199,14 +189,14 @@ export default function IrrigationPlanner() {
             <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
             <div>
               <h3 className="font-semibold text-red-800">
-                {language === 'hi' ? 'डेटा लोड नहीं हुआ' : 'Failed to load data'}
+                {t('irrigation.failed')}
               </h3>
               <p className="text-red-600 text-sm mt-1">{error}</p>
               <button
                 onClick={loadData}
                 className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
               >
-                {language === 'hi' ? 'फिर से कोशिश करें' : 'Retry'}
+                {t('irrigation.retry')}
               </button>
             </div>
           </div>
@@ -221,10 +211,10 @@ export default function IrrigationPlanner() {
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
-            {language === 'hi' ? 'सिंचाई सलाह' : 'Irrigation Advice'}
+            {t('irrigation.title')}
           </h1>
           <p className="text-slate-500 mt-1">
-            {language === 'hi' ? 'मौसम के आधार पर सिंचाई की सलाह' : 'Weather-based watering recommendations'}
+            {t('irrigation.subtitle')}
           </p>
         </div>
         <button
@@ -232,7 +222,7 @@ export default function IrrigationPlanner() {
           className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 bg-slate-100 rounded-lg"
         >
           <Settings className="w-4 h-4" />
-          {language === 'hi' ? 'सेटिंग्स' : 'Settings'}
+          {t('irrigation.settings')}
         </button>
       </div>
 
@@ -244,12 +234,12 @@ export default function IrrigationPlanner() {
           className="card mb-6 bg-slate-50"
         >
           <h3 className="font-semibold text-slate-900 mb-4">
-            {language === 'hi' ? 'अपनी जानकारी दें' : 'Tell us about your farm'}
+            {t('irrigation.tellFarm')}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-slate-600 mb-1">
-                {language === 'hi' ? 'फसल का प्रकार' : 'Crop Type'}
+                {t('irrigation.cropType')}
               </label>
               <select
                 value={cropType}
@@ -263,18 +253,18 @@ export default function IrrigationPlanner() {
             </div>
             <div>
               <label className="block text-sm text-slate-600 mb-1">
-                {language === 'hi' ? 'आखिरी बार पानी कब दिया?' : 'When did you last water?'}
+                {t('irrigation.lastWatered')}
               </label>
               <select
                 value={lastWateredDays}
                 onChange={(e) => setLastWateredDays(parseInt(e.target.value))}
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary-500"
               >
-                <option value={0}>{language === 'hi' ? 'आज' : 'Today'}</option>
-                <option value={1}>{language === 'hi' ? 'कल' : 'Yesterday'}</option>
-                <option value={2}>{language === 'hi' ? '2 दिन पहले' : '2 days ago'}</option>
-                <option value={3}>{language === 'hi' ? '3 दिन पहले' : '3 days ago'}</option>
-                <option value={4}>{language === 'hi' ? '4+ दिन पहले' : '4+ days ago'}</option>
+                <option value={0}>{t('irrigation.today')}</option>
+                <option value={1}>{t('irrigation.yesterday')}</option>
+                <option value={2}>{t('irrigation.2daysAgo')}</option>
+                <option value={3}>{t('irrigation.3daysAgo')}</option>
+                <option value={4}>{t('irrigation.4plusDaysAgo')}</option>
               </select>
             </div>
           </div>
@@ -305,10 +295,10 @@ export default function IrrigationPlanner() {
           {(advice.action === 'water_now' || advice.action === 'water_soon') && (
             <div className="mt-4 p-3 bg-white/60 rounded-xl">
               <p className="text-slate-700 font-medium">
-                {language === 'hi' ? '⏰ सबसे अच्छा समय: सुबह 6-8 बजे या शाम 5-7 बजे' : '⏰ Best time: 6-8 AM or 5-7 PM'}
+                {t('irrigation.bestTime')}
               </p>
               <p className="text-sm text-slate-500 mt-1">
-                {language === 'hi' ? 'दोपहर में पानी देने से बचें - पानी जल्दी सूख जाता है' : 'Avoid watering at noon - water evaporates quickly'}
+                {t('irrigation.avoidNoon')}
               </p>
             </div>
           )}
@@ -321,22 +311,22 @@ export default function IrrigationPlanner() {
           <div className="card p-4 text-center">
             <Thermometer className="w-8 h-8 text-orange-500 mx-auto mb-2" />
             <p className="text-2xl font-bold text-slate-900">{weatherSummary.temp}°C</p>
-            <p className="text-sm text-slate-500">{language === 'hi' ? 'आज का तापमान' : 'Today\'s Temp'}</p>
+            <p className="text-sm text-slate-500">{t('irrigation.todayTemp')}</p>
           </div>
           <div className="card p-4 text-center">
             <Droplets className="w-8 h-8 text-blue-500 mx-auto mb-2" />
             <p className="text-2xl font-bold text-slate-900">{weatherSummary.humidity}%</p>
-            <p className="text-sm text-slate-500">{language === 'hi' ? 'नमी' : 'Humidity'}</p>
+            <p className="text-sm text-slate-500">{t('weather.humidity')}</p>
           </div>
           <div className="card p-4 text-center">
             <Wind className="w-8 h-8 text-slate-500 mx-auto mb-2" />
             <p className="text-2xl font-bold text-slate-900">{weatherSummary.windSpeed}</p>
-            <p className="text-sm text-slate-500">{language === 'hi' ? 'हवा (km/h)' : 'Wind (km/h)'}</p>
+            <p className="text-sm text-slate-500">{t('irrigation.windSpeed')}</p>
           </div>
           <div className="card p-4 text-center">
             <CloudRain className="w-8 h-8 text-blue-500 mx-auto mb-2" />
             <p className="text-2xl font-bold text-slate-900">{weatherSummary.rainDays}</p>
-            <p className="text-sm text-slate-500">{language === 'hi' ? 'बारिश के दिन (5 में)' : 'Rain days (next 5)'}</p>
+            <p className="text-sm text-slate-500">{t('irrigation.rainDays')}</p>
           </div>
         </div>
       )}
@@ -350,7 +340,7 @@ export default function IrrigationPlanner() {
         >
           <h2 className="section-header flex items-center gap-2">
             <Calendar className="w-5 h-5 text-slate-400" />
-            {language === 'hi' ? '5 दिन का मौसम' : '5-Day Weather'}
+            {t('irrigation.5dayWeather')}
           </h2>
 
           <div className="space-y-3">
@@ -377,7 +367,7 @@ export default function IrrigationPlanner() {
                     <div>
                       <p className="font-medium text-slate-900">
                         {isToday
-                          ? (language === 'hi' ? 'आज' : 'Today')
+                          ? t('irrigation.today')
                           : date.toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN', {
                               weekday: 'short',
                               day: 'numeric',
@@ -397,11 +387,11 @@ export default function IrrigationPlanner() {
                       </span>
                     ) : isHot ? (
                       <span className="inline-flex items-center gap-1 px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">
-                        {language === 'hi' ? 'गर्म' : 'Hot'}
+                        {t('irrigation.hot')}
                       </span>
                     ) : (
                       <span className="text-sm text-slate-500">
-                        {language === 'hi' ? 'साफ' : 'Clear'}
+                        {t('irrigation.clear')}
                       </span>
                     )}
                   </div>
@@ -420,50 +410,32 @@ export default function IrrigationPlanner() {
       >
         <h2 className="section-header flex items-center gap-2 text-blue-800">
           <Info className="w-5 h-5 text-blue-600" />
-          {language === 'hi' ? 'पानी बचाने के टिप्स' : 'Water Saving Tips'}
+          {t('irrigation.waterTips')}
         </h2>
 
         <ul className="space-y-2 text-blue-700">
           <li className="flex items-start gap-2">
             <ArrowRight className="w-4 h-4 mt-1 flex-shrink-0" />
-            <span>
-              {language === 'hi'
-                ? 'सुबह जल्दी या शाम को पानी दें - कम पानी उड़ता है'
-                : 'Water early morning or evening - less evaporation'}
-            </span>
+            <span>{t('irrigation.tip1')}</span>
           </li>
           <li className="flex items-start gap-2">
             <ArrowRight className="w-4 h-4 mt-1 flex-shrink-0" />
-            <span>
-              {language === 'hi'
-                ? 'पौधों की जड़ों के पास पानी दें, पत्तों पर नहीं'
-                : 'Water at the roots, not on leaves'}
-            </span>
+            <span>{t('irrigation.tip2')}</span>
           </li>
           <li className="flex items-start gap-2">
             <ArrowRight className="w-4 h-4 mt-1 flex-shrink-0" />
-            <span>
-              {language === 'hi'
-                ? 'बारिश होने पर सिंचाई न करें - पानी बचाएं'
-                : 'Skip irrigation when rain is expected'}
-            </span>
+            <span>{t('irrigation.tip3')}</span>
           </li>
           <li className="flex items-start gap-2">
             <ArrowRight className="w-4 h-4 mt-1 flex-shrink-0" />
-            <span>
-              {language === 'hi'
-                ? 'मल्चिंग करें - मिट्टी में नमी बनी रहती है'
-                : 'Use mulch - it helps soil retain moisture'}
-            </span>
+            <span>{t('irrigation.tip4')}</span>
           </li>
         </ul>
       </motion.div>
 
       {/* Honest Disclaimer */}
       <p className="text-xs text-slate-400 text-center mt-6">
-        {language === 'hi'
-          ? '⚠️ यह सलाह मौसम के आधार पर है। वास्तविक मिट्टी की नमी जांचें।'
-          : '⚠️ This advice is based on weather data. Check actual soil moisture for best results.'}
+        {t('irrigation.disclaimer')}
       </p>
     </div>
   );

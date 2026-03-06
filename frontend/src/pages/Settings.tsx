@@ -72,13 +72,13 @@ export default function Settings() {
     updateLanguage(language);
     // Also update preferences store
     setPrefLanguage(language);
-    toast.success('Language preference updated');
+    toast.success(t('settings.langUpdated'));
   };
 
   const handleLogout = () => {
-    if (confirm('Are you sure you want to log out?')) {
+    if (confirm(t('settings.logoutConfirm'))) {
       logout();
-      toast.success('Logged out successfully');
+      toast.success(t('settings.loggedOut'));
     }
   };
 
@@ -88,9 +88,9 @@ export default function Settings() {
     try {
       await api.updateFarm(farm.farmId, { alertThresholds: localThresholds } as any);
       updateFarmInStore(farm.farmId, { alertThresholds: localThresholds } as any);
-      toast.success('Alert thresholds saved');
+      toast.success(t('settings.thresholdsSaved'));
     } catch {
-      toast.error('Failed to save thresholds');
+      toast.error(t('settings.thresholdsFailed'));
     } finally {
       setSavingThresholds(false);
     }
@@ -100,9 +100,9 @@ export default function Settings() {
     <div className="page-container max-w-2xl">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <h1 className="text-2xl font-bold text-slate-900">{t('settings.title')}</h1>
         <p className="text-slate-500 mt-1">
-          Manage your account and preferences
+          {t('settings.managePrefs')}
         </p>
       </div>
 
@@ -114,7 +114,7 @@ export default function Settings() {
       >
         <h2 className="section-header flex items-center gap-2">
           <User className="w-5 h-5 text-slate-400" />
-          Profile
+          {t('settings.profile')}
         </h2>
 
         <div className="flex items-center gap-4">
@@ -125,7 +125,7 @@ export default function Settings() {
           </div>
           <div>
             <h3 className="font-semibold text-slate-900">
-              {user?.name || 'Demo User'}
+              {user?.name || t('settings.demoUser')}
             </h3>
             <p className="text-slate-500">+91 {user?.phoneNumber || '9876543210'}</p>
             {user?.email && (
@@ -145,10 +145,10 @@ export default function Settings() {
         >
           <h2 className="section-header flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-slate-400" />
-            {t('settings.title')} Mode
+            {t('settings.viewMode')}
           </h2>
           <p className="text-sm text-slate-500 mb-4">
-            Choose how you want to view information
+            {t('settings.chooseMode')}
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -178,7 +178,7 @@ export default function Settings() {
               </div>
               {uiMode === 'simple' && (
                 <div className="mt-3 text-xs text-green-600 font-medium">
-                  ✓ Active
+                  {t('settings.activeMode')}
                 </div>
               )}
             </button>
@@ -209,7 +209,7 @@ export default function Settings() {
               </div>
               {uiMode === 'expert' && (
                 <div className="mt-3 text-xs text-blue-600 font-medium">
-                  ✓ Active
+                  {t('settings.activeMode')}
                 </div>
               )}
             </button>
@@ -226,10 +226,10 @@ export default function Settings() {
       >
         <h2 className="section-header flex items-center gap-2">
           <Globe className="w-5 h-5 text-slate-400" />
-          Language
+          {t('settings.language')}
         </h2>
         <p className="text-sm text-slate-500 mb-4">
-          Choose your preferred language for alerts
+          {t('settings.chooseLanguage')}
         </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -259,22 +259,22 @@ export default function Settings() {
       >
         <h2 className="section-header flex items-center gap-2">
           <Bell className="w-5 h-5 text-slate-400" />
-          Notifications
+          {t('settings.notifications')}
         </h2>
 
         <div className="space-y-4">
           <SettingToggle
             icon={MessageSquare}
-            title="Text Alerts"
-            description="Receive WhatsApp text messages for threats"
+            title={t('settings.textAlerts')}
+            description={t('settings.textAlertsDesc')}
             enabled={textEnabled}
             onChange={setTextEnabled}
           />
 
           <SettingToggle
             icon={Volume2}
-            title="Voice Alerts"
-            description="Receive voice messages in your language"
+            title={t('settings.voiceAlerts')}
+            description={t('settings.voiceAlertsDesc')}
             enabled={voiceEnabled}
             onChange={setVoiceEnabled}
           />
@@ -290,30 +290,30 @@ export default function Settings() {
       >
         <h2 className="section-header flex items-center gap-2">
           <AlertTriangle className="w-5 h-5 text-slate-400" />
-          Alert Thresholds
+          {t('settings.alertThresholds')}
         </h2>
         <p className="text-sm text-slate-500 mb-4">
-          Minimum AI confidence required to trigger an alert
+          {t('settings.thresholdsDesc')}
         </p>
 
         <div className="space-y-5">
           <ThresholdSlider
-            label="🔥 Fire Detection"
+            label={t('settings.fireDetection')}
             value={localThresholds.fire}
             color="red"
-            onChange={v => setLocalThresholds(t => ({ ...t, fire: v }))}
+            onChange={v => setLocalThresholds(prev => ({ ...prev, fire: v }))}
           />
           <ThresholdSlider
-            label="👤 Human Intrusion"
+            label={t('settings.humanIntrusion')}
             value={localThresholds.human}
             color="orange"
-            onChange={v => setLocalThresholds(t => ({ ...t, human: v }))}
+            onChange={v => setLocalThresholds(prev => ({ ...prev, human: v }))}
           />
           <ThresholdSlider
-            label="🐗 Animal Intrusion"
+            label={t('settings.animalIntrusion')}
             value={localThresholds.animal}
             color="yellow"
-            onChange={v => setLocalThresholds(t => ({ ...t, animal: v }))}
+            onChange={v => setLocalThresholds(prev => ({ ...prev, animal: v }))}
           />
         </div>
 
@@ -323,7 +323,7 @@ export default function Settings() {
           className="mt-5 w-full flex items-center justify-center gap-2 py-2.5 bg-primary-600 hover:bg-primary-700 disabled:bg-slate-300 text-white rounded-lg font-medium text-sm transition-colors"
         >
           <Save className="w-4 h-4" />
-          {savingThresholds ? 'Saving...' : 'Save Thresholds'}
+          {savingThresholds ? t('settings.saving') : t('settings.saveThresholds')}
         </button>
 
         {/* Score calculation basis */}
@@ -333,7 +333,7 @@ export default function Settings() {
         >
           <span className="flex items-center gap-1.5">
             <Info className="w-4 h-4" />
-            How are AI scores calculated?
+            {t('settings.howCalculated')}
           </span>
           <ChevronDown className={`w-4 h-4 transition-transform ${showScoreBasis ? 'rotate-180' : ''}`} />
         </button>
@@ -348,27 +348,27 @@ export default function Settings() {
             >
               <div className="mt-3 p-4 bg-slate-50 rounded-lg text-xs text-slate-600 space-y-3">
                 <div>
-                  <p className="font-semibold text-slate-800 mb-1">NDVI (Vegetation Index)</p>
+                  <p className="font-semibold text-slate-800 mb-1">{t('settings.ndviSection')}</p>
                   <p className="font-mono bg-white px-2 py-1 rounded text-slate-700 mb-1">NDVI = (NIR − Red) / (NIR + Red)</p>
-                  <p>Derived from Sentinel-2 satellite Band 8 (NIR) and Band 4 (Red). Range: −1 to +1.</p>
+                  <p>{t('settings.ndviDesc')}</p>
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-800 mb-1">Crop Health Score (0–100)</p>
+                  <p className="font-semibold text-slate-800 mb-1">{t('settings.healthScoreSection')}</p>
                   <div className="space-y-0.5">
-                    <p>NDVI ≥ 0.6 → <span className="text-green-600 font-medium">Excellent (95)</span></p>
-                    <p>NDVI ≥ 0.45 → <span className="text-lime-600 font-medium">Good (80)</span></p>
-                    <p>NDVI ≥ 0.3 → <span className="text-yellow-600 font-medium">Moderate (60)</span></p>
-                    <p>NDVI ≥ 0.15 → <span className="text-orange-600 font-medium">Stressed (40)</span></p>
-                    <p>NDVI &lt; 0.15 → <span className="text-red-600 font-medium">Poor (20)</span></p>
+                    <p>NDVI ≥ 0.6 → <span className="text-green-600 font-medium">{t('health.excellent')} (95)</span></p>
+                    <p>NDVI ≥ 0.45 → <span className="text-lime-600 font-medium">{t('health.good')} (80)</span></p>
+                    <p>NDVI ≥ 0.3 → <span className="text-yellow-600 font-medium">{t('health.moderate')} (60)</span></p>
+                    <p>NDVI ≥ 0.15 → <span className="text-orange-600 font-medium">{t('health.stressed')} (40)</span></p>
+                    <p>NDVI &lt; 0.15 → <span className="text-red-600 font-medium">{t('health.poor')} (20)</span></p>
                   </div>
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-800 mb-1">Disease Risk Score</p>
-                  <p>Weighted weather model: Humidity (35%) + Temperature match (30%) + Precipitation (25%) + Wind (10%)</p>
+                  <p className="font-semibold text-slate-800 mb-1">{t('settings.diseaseRiskSection')}</p>
+                  <p>{t('settings.diseaseRiskDesc')}</p>
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-800 mb-1">AI Threat Detection</p>
-                  <p>Bedrock Claude Vision model analyzes each camera frame. Score = model confidence (0–100%). Your threshold controls when an alert fires.</p>
+                  <p className="font-semibold text-slate-800 mb-1">{t('settings.aiThreatSection')}</p>
+                  <p>{t('settings.aiThreatDesc')}</p>
                 </div>
               </div>
             </motion.div>
@@ -385,14 +385,14 @@ export default function Settings() {
       >
         <h2 className="section-header flex items-center gap-2">
           <Shield className="w-5 h-5 text-slate-400" />
-          Security
+          {t('settings.security')}
         </h2>
 
         <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-50">
           <Lock className="w-5 h-5 text-slate-400 flex-shrink-0" />
           <div>
-            <p className="font-medium text-slate-900">Login Phone Number</p>
-            <p className="text-sm text-slate-500">+91 {user?.phoneNumber || '—'} · Contact support to change</p>
+            <p className="font-medium text-slate-900">{t('settings.loginPhone')}</p>
+            <p className="text-sm text-slate-500">{t('settings.phoneContact', { phone: user?.phoneNumber || '—' })}</p>
           </div>
         </div>
       </motion.div>
@@ -408,13 +408,13 @@ export default function Settings() {
           className="w-full flex items-center justify-center gap-2 p-4 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
         >
           <LogOut className="w-5 h-5" />
-          <span className="font-medium">Log Out</span>
+          <span className="font-medium">{t('settings.logout')}</span>
         </button>
       </motion.div>
 
       {/* Version info */}
       <p className="text-center text-slate-400 text-sm mt-8">
-        Green Sentinel v1.0.0 • Made with ❤️ for Indian Farmers
+        {t('settings.version')}
       </p>
     </div>
   );
@@ -473,6 +473,7 @@ function ThresholdSlider({
   color: 'red' | 'orange' | 'yellow';
   onChange: (value: number) => void;
 }) {
+  const { t } = useTranslation();
   const colorClasses = {
     red: 'accent-red-500',
     orange: 'accent-orange-500',
@@ -494,8 +495,8 @@ function ThresholdSlider({
         className={`w-full h-2 rounded-full cursor-pointer ${colorClasses[color]}`}
       />
       <div className="flex justify-between text-xs text-slate-400 mt-1">
-        <span>50% (sensitive)</span>
-        <span>99% (strict)</span>
+        <span>{t('settings.sensitive')}</span>
+        <span>{t('settings.strict')}</span>
       </div>
     </div>
   );

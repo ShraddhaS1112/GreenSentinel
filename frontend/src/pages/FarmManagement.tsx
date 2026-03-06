@@ -18,15 +18,17 @@ import {
 import { useFarmStore } from '@/stores/farmStore';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
+import { useTranslation } from '@/stores/preferencesStore';
 
 export default function FarmManagement() {
+  const { t } = useTranslation();
   const { farms, currentFarmId, setCurrentFarm, deleteFarm } = useFarmStore();
   const [showAddModal, setShowAddModal] = useState(false);
 
   const handleDelete = (farmId: string, farmName: string) => {
-    if (confirm(`Are you sure you want to delete "${farmName}"? This action cannot be undone.`)) {
+    if (confirm(t('farms.deleteConfirm', { name: farmName }))) {
       deleteFarm(farmId);
-      toast.success('Farm deleted successfully');
+      toast.success(t('farms.farmDeleted'));
     }
   };
 
@@ -35,9 +37,9 @@ export default function FarmManagement() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Farm Management</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t('farms.title')}</h1>
           <p className="text-slate-500 mt-1">
-            {farms.length} farm{farms.length !== 1 ? 's' : ''} registered
+            {t(farms.length !== 1 ? 'farms.registeredCountPlural' : 'farms.registeredCount', { count: farms.length })}
           </p>
         </div>
 
@@ -46,7 +48,7 @@ export default function FarmManagement() {
           className="btn-primary"
         >
           <Plus className="w-5 h-5" />
-          <span className="hidden sm:inline">Add Farm</span>
+          <span className="hidden sm:inline">{t('farms.addFarm')}</span>
         </button>
       </div>
 
@@ -55,17 +57,17 @@ export default function FarmManagement() {
         <div className="card text-center py-12">
           <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-slate-700 mb-2">
-            No farms registered
+            {t('farms.noFarms')}
           </h3>
           <p className="text-slate-500 mb-4">
-            Add your first farm to start monitoring
+            {t('farms.addFirstFarm')}
           </p>
           <button
             onClick={() => setShowAddModal(true)}
             className="btn-primary"
           >
             <Plus className="w-5 h-5" />
-            Add Your First Farm
+            {t('farms.addFirstFarmBtn')}
           </button>
         </div>
       ) : (
@@ -93,7 +95,7 @@ export default function FarmManagement() {
                       {farm.name}
                     </h3>
                     {farm.farmId === currentFarmId && (
-                      <span className="badge-success">Active</span>
+                      <span className="badge-success">{t('common.active')}</span>
                     )}
                   </div>
 
@@ -105,15 +107,15 @@ export default function FarmManagement() {
                   <div className="flex flex-wrap items-center gap-4 mt-3">
                     <div className="flex items-center gap-1 text-sm text-slate-600">
                       <Leaf className="w-4 h-4 text-green-500" />
-                      <span>{farm.cropType || 'Mixed crops'}</span>
+                      <span>{farm.cropType || t('farms.mixedCrops')}</span>
                     </div>
                     <div className="flex items-center gap-1 text-sm text-slate-600">
                       <Camera className="w-4 h-4 text-blue-500" />
-                      <span>{farm.cameras.length} cameras</span>
+                      <span>{farm.cameras.length} {t('common.cameras')}</span>
                     </div>
                     {farm.area && (
                       <div className="text-sm text-slate-600">
-                        {farm.area} hectares
+                        {farm.area} {t('farms.hectares')}
                       </div>
                     )}
                   </div>
@@ -126,7 +128,7 @@ export default function FarmManagement() {
                     className="btn-secondary"
                   >
                     <Camera className="w-4 h-4" />
-                    <span className="hidden sm:inline">Cameras</span>
+                    <span className="hidden sm:inline">{t('farms.camerasBtn')}</span>
                   </Link>
 
                   <button className="btn-icon btn-ghost">
@@ -159,6 +161,7 @@ export default function FarmManagement() {
 // =============================================================================
 
 function AddFarmModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const { addFarm } = useFarmStore();
   const { user } = useAuthStore();
   const [formData, setFormData] = useState({
@@ -200,7 +203,7 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
     };
 
     addFarm(newFarm);
-    toast.success('Farm added successfully!');
+    toast.success(t('farms.farmAdded'));
     onClose();
   };
 
@@ -212,15 +215,15 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
         className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
       >
         <div className="p-6 border-b border-slate-200">
-          <h2 className="text-xl font-semibold text-slate-900">Add New Farm</h2>
+          <h2 className="text-xl font-semibold text-slate-900">{t('farms.addNewFarm')}</h2>
           <p className="text-slate-500 text-sm mt-1">
-            Register a new farm for monitoring
+            {t('farms.registerMonitor')}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="label">Farm Name *</label>
+            <label className="label">{t('farms.farmName')} *</label>
             <input
               type="text"
               value={formData.name}
@@ -233,7 +236,7 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Latitude</label>
+              <label className="label">{t('farms.latitude')}</label>
               <input
                 type="number"
                 step="any"
@@ -244,7 +247,7 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div>
-              <label className="label">Longitude</label>
+              <label className="label">{t('farms.longitude')}</label>
               <input
                 type="number"
                 step="any"
@@ -257,7 +260,7 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
           </div>
 
           <div>
-            <label className="label">Address</label>
+            <label className="label">{t('farms.address')}</label>
             <input
               type="text"
               value={formData.address}
@@ -269,7 +272,7 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">District</label>
+              <label className="label">{t('farms.district')}</label>
               <input
                 type="text"
                 value={formData.district}
@@ -279,7 +282,7 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div>
-              <label className="label">State</label>
+              <label className="label">{t('farms.state')}</label>
               <select
                 value={formData.state}
                 onChange={(e) => setFormData({ ...formData, state: e.target.value })}
@@ -300,7 +303,7 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">Crop Type</label>
+              <label className="label">{t('farms.cropType')}</label>
               <input
                 type="text"
                 value={formData.cropType}
@@ -310,7 +313,7 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
               />
             </div>
             <div>
-              <label className="label">Area (hectares)</label>
+              <label className="label">{t('farms.area')} ({t('farms.hectares')})</label>
               <input
                 type="number"
                 value={formData.area}
@@ -323,10 +326,10 @@ function AddFarmModal({ onClose }: { onClose: () => void }) {
 
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="btn-primary flex-1">
-              Add Farm
+              {t('farms.addFarm')}
             </button>
           </div>
         </form>

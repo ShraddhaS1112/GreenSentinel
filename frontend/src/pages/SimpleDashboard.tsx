@@ -34,7 +34,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { useFarmStore } from '@/stores/farmStore';
-import { usePreferencesStore } from '@/stores/preferencesStore';
+import { useTranslation, usePreferencesStore } from '@/stores/preferencesStore';
 import * as api from '@/services/apiService';
 import { getHealthAdvice } from '@/utils/farmerFriendly';
 
@@ -56,12 +56,12 @@ const speakMessage = (message: string, language: string) => {
   }
 };
 
-function daysAgo(dateStr: string): string {
+function daysAgo(dateStr: string, t: (key: string, vars?: Record<string, string | number>) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  return `${days}d ago`;
+  if (days === 0) return t('common.today');
+  if (days === 1) return t('common.yesterday');
+  return t('simple.daysAgo', { days });
 }
 
 // =============================================================================
@@ -69,8 +69,9 @@ function daysAgo(dateStr: string): string {
 // =============================================================================
 
 export default function SimpleDashboard() {
+  const { t, language } = useTranslation();
+  const { voiceGuidance } = usePreferencesStore();
   const { getCurrentFarm } = useFarmStore();
-  const { voiceGuidance, language } = usePreferencesStore();
   const farm = getCurrentFarm();
 
   const [cropHealth, setCropHealth] = useState<api.CropHealthResponse | null>(null);
@@ -176,29 +177,19 @@ export default function SimpleDashboard() {
   const todayTask = useMemo(() => {
     if (loading) return null;
     if (alertCount > 0) {
-      return language === 'hi'
-        ? `${alertCount} चेतावनी देखें — अभी`
-        : `Check ${alertCount} farm alert${alertCount > 1 ? 's' : ''} now`;
+      return t(alertCount > 1 ? 'simple.taskAlertsPlural' : 'simple.taskAlerts', { count: alertCount });
     }
     if (topDisease && topDisease.risk > 65) {
-      return language === 'hi'
-        ? `${topDisease.name} का खतरा — पत्तियां जांचें`
-        : `Watch for ${topDisease.name} — inspect leaves`;
+      return t('simple.taskDisease', { name: topDisease.name });
     }
     if (ndvi > 0 && ndvi < 0.3 && isWet) {
-      return language === 'hi'
-        ? 'बारिश हो रही है — जल निकासी जांचें'
-        : 'Rain falling — check drainage, hold irrigation';
+      return t('simple.taskRainDrain');
     }
     if (ndvi > 0 && ndvi < 0.3) {
-      return language === 'hi'
-        ? 'आज पानी दें — मिट्टी सूखी है'
-        : 'Water your crops today — soil moisture is low';
+      return t('simple.taskWater');
     }
-    return language === 'hi'
-      ? 'फसल ठीक है — इस हफ्ते एक बार जांचें'
-      : 'Crops look healthy — do a routine check this week';
-  }, [loading, alertCount, topDisease, ndvi, isWet, language]);
+    return t('simple.taskNormal');
+  }, [loading, alertCount, topDisease, ndvi, isWet, t]);
 
   // Priority action — single most urgent thing for the farmer
   const priorityAction = useMemo(() => {
@@ -208,8 +199,8 @@ export default function SimpleDashboard() {
         bg: 'bg-red-500',
         textColor: 'text-white',
         icon: AlertTriangle,
-        title: language === 'hi' ? `${alertCount} चेतावनी है` : `${alertCount} Alert${alertCount > 1 ? 's' : ''} Need Attention`,
-        subtitle: language === 'hi' ? 'अभी देखें' : 'Check now',
+        title: t(alertCount > 1 ? 'simple.priorityAlertsTitlePlural' : 'simple.priorityAlertsTitle', { count: alertCount }),
+        subtitle: t('simple.checkNow'),
       };
     }
     if (topDisease && topDisease.risk > 65) {
@@ -218,8 +209,8 @@ export default function SimpleDashboard() {
         bg: 'bg-orange-500',
         textColor: 'text-white',
         icon: Bug,
-        title: language === 'hi' ? `${topDisease.name} का खतरा` : `${topDisease.name} Risk`,
-        subtitle: language === 'hi' ? `${topDisease.risk}% — निवारक उपाय करें` : `${topDisease.risk}% — take preventive action`,
+        title: t('simple.priorityDiseaseTitle', { name: topDisease.name }),
+        subtitle: t('simple.preventiveAction', { risk: topDisease.risk }),
       };
     }
     if (ndvi > 0 && ndvi < 0.3) {
@@ -229,8 +220,8 @@ export default function SimpleDashboard() {
           bg: 'bg-blue-500',
           textColor: 'text-white',
           icon: CloudRain,
-          title: language === 'hi' ? 'बारिश हो रही है' : 'Rain Falling',
-          subtitle: language === 'hi' ? 'सिंचाई रोकें — जल निकासी जांचें' : 'Hold irrigation — check drainage',
+          title: t('simple.rainFallingTitle'),
+          subtitle: t('simple.holdIrrigation'),
         };
       }
       return {
@@ -238,8 +229,8 @@ export default function SimpleDashboard() {
         bg: 'bg-blue-500',
         textColor: 'text-white',
         icon: Droplets,
-        title: language === 'hi' ? 'पानी की जांच करें' : 'Check Water Supply',
-        subtitle: language === 'hi' ? 'पौधों में नमी कम है' : 'Plants may need irrigation',
+        title: t('simple.checkWaterTitle'),
+        subtitle: t('simple.plantsMayNeed'),
       };
     }
     return {
@@ -247,10 +238,10 @@ export default function SimpleDashboard() {
       bg: 'bg-green-600',
       textColor: 'text-white',
       icon: Leaf,
-      title: language === 'hi' ? 'फसल की जांच करें' : 'Scan Your Crops',
-      subtitle: language === 'hi' ? 'फोटो लें, बीमारी पकड़ें' : 'Take a photo to detect diseases early',
+      title: t('simple.scanCropsTitle'),
+      subtitle: t('simple.takePhotoDetect'),
     };
-  }, [alertCount, topDisease, ndvi, isWet, language]);
+  }, [alertCount, topDisease, ndvi, isWet, t]);
 
   // Auto-voice priority action on first successful load
   useEffect(() => {
@@ -283,10 +274,10 @@ export default function SimpleDashboard() {
         <div className="text-center">
           <Leaf className="w-14 h-14 text-slate-300 mx-auto mb-4" />
           <p className="text-lg text-slate-500 mb-3">
-            {language === 'hi' ? 'कोई खेत नहीं चुना' : 'No farm selected'}
+            {t('simple.noFarm')}
           </p>
           <Link to="/farms" className="inline-block px-4 py-2 bg-green-600 text-white rounded-xl font-medium text-sm">
-            {language === 'hi' ? 'खेत जोड़ें' : 'Add Farm'}
+            {t('simple.addFarm')}
           </Link>
         </div>
       </div>
@@ -302,10 +293,8 @@ export default function SimpleDashboard() {
           <WifiOff className="w-4 h-4 text-amber-600 flex-shrink-0" />
           <p className="text-xs text-amber-700">
             {dataTimestamp
-              ? (language === 'hi'
-                  ? `अंतिम डेटा: ${dataTimestamp.toLocaleTimeString('hi-IN', { hour: '2-digit', minute: '2-digit' })}`
-                  : `Showing last known data from ${dataTimestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`)
-              : (language === 'hi' ? 'डेटा लोड नहीं हो सका' : 'Could not load data — check connection')}
+              ? t('simple.lastData', { time: dataTimestamp.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) })
+              : t('simple.couldNotLoad')}
           </p>
         </div>
       )}
@@ -347,7 +336,7 @@ export default function SimpleDashboard() {
         <div className="flex items-start justify-between mb-3">
           <div>
             <p className="text-white/70 text-xs font-semibold uppercase tracking-wide mb-1">
-              {language === 'hi' ? 'फसल स्वास्थ्य' : 'Farm Health'}
+              {t('simple.farmHealth')}
             </p>
             <div className="flex items-end gap-1.5">
               <span className="text-5xl font-black text-white leading-none">
@@ -362,10 +351,10 @@ export default function SimpleDashboard() {
             {!loading && weeklyChange !== null && (
               <div className="flex items-center justify-end gap-1 mt-1">
                 {weeklyChange > 0
-                  ? <><TrendingUp className="w-3.5 h-3.5 text-white/80" /><span className="text-white/80 text-xs">+{weeklyChange} this week</span></>
+                  ? <><TrendingUp className="w-3.5 h-3.5 text-white/80" /><span className="text-white/80 text-xs">{t('simple.thisWeekChange', { change: weeklyChange })}</span></>
                   : weeklyChange < 0
-                  ? <><TrendingDown className="w-3.5 h-3.5 text-white/80" /><span className="text-white/80 text-xs">{weeklyChange} this week</span></>
-                  : <><Minus className="w-3.5 h-3.5 text-white/70" /><span className="text-white/70 text-xs">Stable this week</span></>
+                  ? <><TrendingDown className="w-3.5 h-3.5 text-white/80" /><span className="text-white/80 text-xs">{t('simple.thisWeekChangeNeg', { change: weeklyChange })}</span></>
+                  : <><Minus className="w-3.5 h-3.5 text-white/70" /><span className="text-white/70 text-xs">{t('common.stableWeek')}</span></>
                 }
               </div>
             )}
@@ -400,10 +389,12 @@ export default function SimpleDashboard() {
         <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
           <Clock className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
           <span>
-            {language === 'hi'
-              ? `इस हफ्ते: ${weeklyAlertCount > 0 ? `${weeklyAlertCount} चेतावनी` : 'कोई चेतावनी नहीं'} · स्वास्थ्य ${cropHealth?.trend === 'improving' ? 'सुधर रहा' : cropHealth?.trend === 'declining' ? 'घट रहा' : 'स्थिर'}`
-              : `This week: ${weeklyAlertCount > 0 ? `${weeklyAlertCount} alert${weeklyAlertCount > 1 ? 's' : ''}` : 'no alerts'} · health ${cropHealth?.trend ?? 'stable'}`
+            {t('simple.thisWeek')}{' '}
+            {weeklyAlertCount > 0
+              ? (weeklyAlertCount > 1 ? t('simple.weekAlertsPlural', { count: weeklyAlertCount }) : t('simple.weekAlerts', { count: weeklyAlertCount }))
+              : t('simple.weekAlertsNone')
             }
+            {' '}{t('simple.weekHealthTrend', { trend: t(`simple.${cropHealth?.trend ?? 'stable'}`) })}
           </span>
         </div>
       )}
@@ -422,7 +413,7 @@ export default function SimpleDashboard() {
               {weather ? `${Math.round(weather.temp)}°C` : '--'}
             </p>
             <p className="text-xs text-slate-500 mt-0.5">
-              {language === 'hi' ? 'मौसम' : 'Weather'}
+              {t('simple.weather')}
             </p>
           </div>
 
@@ -434,7 +425,7 @@ export default function SimpleDashboard() {
                 {loading ? '--' : alertCount}
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
-                {language === 'hi' ? 'चेतावनी' : 'Alerts'}
+                {t('dashboard.alerts')}
               </p>
             </div>
           </Link>
@@ -444,10 +435,10 @@ export default function SimpleDashboard() {
             <div className={`rounded-t-xl rounded-b-none p-3 border text-center ${topDisease && topDisease.risk > 50 ? 'bg-orange-50 border-orange-200' : 'bg-white border-slate-200'}`}>
               <Bug className={`w-6 h-6 mx-auto mb-1 ${topDisease && topDisease.risk > 50 ? 'text-orange-500' : 'text-green-500'}`} />
               <p className={`text-sm font-bold ${topDisease && topDisease.risk > 50 ? 'text-orange-700' : 'text-green-700'}`}>
-                {loading ? '--' : topDisease ? `${topDisease.risk}%` : 'Low'}
+                {loading ? '--' : topDisease ? `${topDisease.risk}%` : t('simple.diseaseRiskLow')}
               </p>
               <p className="text-xs text-slate-500 mt-0.5">
-                {language === 'hi' ? 'बीमारी' : 'Disease'}
+                {t('simple.disease')}
               </p>
             </div>
           </Link>
@@ -483,12 +474,12 @@ export default function SimpleDashboard() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-slate-800 text-sm">
-              {language === 'hi' ? 'बीमारी जांचें' : 'Disease Scanner'}
+              {t('simple.diseaseScanner')}
             </p>
             <p className="text-xs text-slate-500">
               {lastScanDate
-                ? (language === 'hi' ? `अंतिम स्कैन: ${daysAgo(lastScanDate)}` : `Last scan: ${daysAgo(lastScanDate)}`)
-                : (language === 'hi' ? 'अभी तक कोई स्कैन नहीं' : 'Never scanned — tap to start')}
+                ? t('simple.lastScan', { when: daysAgo(lastScanDate, t) })
+                : t('simple.neverScanned')}
             </p>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -500,12 +491,10 @@ export default function SimpleDashboard() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-slate-800 text-sm">
-              {language === 'hi' ? 'सिंचाई योजना' : 'Irrigation Plan'}
+              {t('simple.irrigationPlan')}
             </p>
             <p className="text-xs text-slate-500">
-              {isWet
-                ? (language === 'hi' ? 'बारिश हो रही है — पानी न दें' : 'Rain falling — no irrigation needed')
-                : (language === 'hi' ? 'पानी कब दें' : 'When and how much to water')}
+              {isWet ? t('simple.rainFalling') : t('simple.whenToWater')}
             </p>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -518,12 +507,12 @@ export default function SimpleDashboard() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <p className="font-semibold text-slate-800 text-sm">
-                {language === 'hi' ? 'खेत की निगरानी' : 'Farm Security Camera'}
+                {t('simple.farmSecurity')}
               </p>
               <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded font-medium">AI</span>
             </div>
             <p className="text-xs text-slate-500">
-              {language === 'hi' ? 'आग, घुसपैठ, जानवर' : 'Fire · Intruders · Animals'}
+              {t('simple.fireIntruderAnimals')}
             </p>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -535,10 +524,10 @@ export default function SimpleDashboard() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-slate-800 text-sm">
-              {language === 'hi' ? 'पूरी रिपोर्ट' : 'Full Crop Report'}
+              {t('simple.fullReport')}
             </p>
             <p className="text-xs text-slate-500">
-              {language === 'hi' ? 'उपग्रह डेटा और चार्ट' : 'Satellite charts & trends'}
+              {t('simple.satelliteCharts')}
             </p>
           </div>
           <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
@@ -550,9 +539,9 @@ export default function SimpleDashboard() {
         <Phone className="w-5 h-5 text-slate-600 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-slate-700">
-            {language === 'hi' ? 'किसान हेल्पलाइन' : 'Kisan Helpline'}
+            {t('simple.kisanHelpline')}
           </p>
-          <p className="text-xs text-slate-500">1800-180-1551 · {language === 'hi' ? 'निःशुल्क' : 'Toll free'}</p>
+          <p className="text-xs text-slate-500">1800-180-1551 · {t('simple.tollFree')}</p>
         </div>
         <ArrowRight className="w-4 h-4 text-slate-400 flex-shrink-0" />
       </a>

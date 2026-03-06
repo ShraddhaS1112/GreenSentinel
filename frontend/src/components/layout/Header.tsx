@@ -7,12 +7,14 @@ import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { useFarmStore } from '@/stores/farmStore';
 import { useState } from 'react';
 import NotificationPanel from '../notifications/NotificationPanel';
+import { useTranslation } from '@/stores/preferencesStore';
 
 interface HeaderProps {
   onMenuClick: () => void;
 }
 
 export default function Header({ onMenuClick }: HeaderProps) {
+  const { t } = useTranslation();
   const isOnline = useOnlineStatus();
   const { getCurrentFarm, threats } = useFarmStore();
   const currentFarm = getCurrentFarm();
@@ -41,11 +43,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
           {/* Page title / Farm name */}
           <div className="hidden sm:block">
             <h1 className="text-lg font-semibold text-slate-900">
-              {currentFarm?.name || 'Dashboard'}
+              {currentFarm?.name || t('common.dashboard')}
             </h1>
             {currentFarm && (
               <p className="text-xs text-slate-500">
-                {currentFarm.cropType} • {currentFarm.area} hectares
+                {currentFarm.cropType} • {currentFarm.area} {t('farms.hectares')}
               </p>
             )}
           </div>
@@ -64,12 +66,12 @@ export default function Header({ onMenuClick }: HeaderProps) {
             {isOnline ? (
               <>
                 <Wifi className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Online</span>
+                <span className="hidden sm:inline">{t('common.onlineStatus')}</span>
               </>
             ) : (
               <>
                 <WifiOff className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Offline</span>
+                <span className="hidden sm:inline">{t('common.offlineStatus')}</span>
               </>
             )}
           </div>

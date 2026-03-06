@@ -32,6 +32,7 @@ import {
 import toast from 'react-hot-toast';
 import * as api from '@/services/apiService';
 import { useFarmStore } from '@/stores/farmStore';
+import { useTranslation } from '@/stores/preferencesStore';
 
 interface LiveCameraProps {
   farmId: string;
@@ -60,6 +61,7 @@ const MOTION_COVERAGE_THRESHOLD = 5;   // % of pixels that must change
 const MOTION_PIXEL_DIFF_THRESHOLD = 90; // per-pixel diff to count as changed
 
 export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps) {
+  const { t } = useTranslation();
   const { getCurrentFarm } = useFarmStore();
   const farm = getCurrentFarm();
   const videoRef        = useRef<HTMLVideoElement>(null);
@@ -116,7 +118,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
         await videoRef.current.play();
         setActiveFeed('device');
         setIsStreaming(true);
-        toast.success('Camera started — AI monitoring active');
+        toast.success(t('livecam.cameraStarted'));
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Camera access denied';
@@ -150,7 +152,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
       setIsStreaming(true);
       lastFrameRef.current = null;
     } catch {
-      setError(`Could not load feed: ${feed.label}`);
+      setError(t('livecam.couldNotLoad', { feed: feed.label }));
     }
   };
 
@@ -221,7 +223,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
       if (response.status === 429) {
         setCooldownRemaining(60);
         setLastAnalysisTime(Date.now()); // reset so the 60s starts fresh
-        toast('AI is busy — next scan in 60s', { icon: '⏳' });
+        toast(t('livecam.aiBusy'), { icon: '⏳' });
         return;
       }
 
@@ -236,7 +238,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
 
       const isThreat = analysis.overallThreat !== 'none' && analysis.overallThreat !== 'low';
       if (isThreat) {
-        toast.error(`⚠️ ${analysis.overallThreat.toUpperCase()} threat detected!`, { duration: 6000 });
+        toast.error(t('livecam.threatDetected', { level: analysis.overallThreat.toUpperCase() }), { duration: 6000 });
         onThreatDetected?.(analysis);
 
         // Persist as an alert so it appears in History and Dashboard
@@ -341,7 +343,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
   };
 
   const cameraName = activeFeed === 'device'
-    ? 'Device Camera'
+    ? t('livecam.deviceCameraName')
     : activeFeed?.label ?? '';
   const cameraLocation = activeFeed === 'device'
     ? 'LIVE CAM'
@@ -354,20 +356,20 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
       <div className="p-4 border-b border-slate-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Camera className="w-5 h-5 text-green-600" />
-          <h3 className="font-semibold text-slate-900">Live Camera</h3>
+          <h3 className="font-semibold text-slate-900">{t('livecam.title')}</h3>
           {isStreaming && (
             <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
               </span>
-              Monitoring
+              {t('livecam.monitoring')}
             </span>
           )}
           {agentStatus?.online && (
-            <span className="flex items-center gap-1 text-xs text-blue-600 font-medium" title="Edge agent running 24/7">
+            <span className="flex items-center gap-1 text-xs text-blue-600 font-medium" title={t('livecam.edgeAgent')}>
               <Bot className="w-3.5 h-3.5" />
-              Auto
+              {t('livecam.autoLabel')}
             </span>
           )}
         </div>
@@ -390,7 +392,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
                       onClick={startDeviceCamera}
                       className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center gap-2"
                     >
-                      <Camera className="w-3.5 h-3.5 text-slate-500" /> Device Camera
+                      <Camera className="w-3.5 h-3.5 text-slate-500" /> {t('livecam.deviceCameraName')}
                     </button>
                     {CAMERA_FEEDS.map(f => (
                       <button
@@ -421,7 +423,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
             onClick={isStreaming ? stopFeed : undefined}
             className={`px-3 py-2 rounded-lg font-medium transition-colors ${isStreaming ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'hidden'}`}
           >
-            <CameraOff className="w-4 h-4 inline mr-1" />Stop
+            <CameraOff className="w-4 h-4 inline mr-1" />{t('livecam.stop')}
           </button>
         </div>
       </div>
@@ -457,19 +459,19 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
                     </span>
-                    Auto-monitoring — {agentStatus.cameras.length} cam{agentStatus.cameras.length !== 1 ? 's' : ''}
+                    {t(agentStatus.cameras.length !== 1 ? 'livecam.autoMonitoringPlural' : 'livecam.autoMonitoring', { count: agentStatus.cameras.length })}
                   </>
                 ) : (
                   <>
                     <WifiOff className="w-3 h-3" />
-                    Agent offline — manual mode
+                    {t('livecam.agentOffline')}
                   </>
                 )}
               </div>
             )}
 
             <p className="text-slate-400 text-xs font-mono mb-2 tracking-widest uppercase">
-              Select Camera Feed
+              {t('livecam.selectFeed')}
             </p>
             <div className="grid grid-cols-3 gap-1.5 w-full max-w-xs">
               {/* Device Camera */}
@@ -478,8 +480,8 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
                 className="flex flex-col items-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg px-2 py-2 transition-colors"
               >
                 <Camera className="w-4 h-4 text-slate-400" />
-                <span className="text-white text-[10px] font-medium leading-tight text-center">Device</span>
-                <span className="text-slate-500 text-[9px] font-mono">LIVE</span>
+                <span className="text-white text-[10px] font-medium leading-tight text-center">{t('livecam.device')}</span>
+                <span className="text-slate-500 text-[9px] font-mono">{t('common.live')}</span>
               </button>
 
               {/* Named feeds */}
@@ -529,7 +531,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
             className="absolute top-9 left-3 px-2 py-1 bg-yellow-500 text-white text-xs font-semibold rounded flex items-center gap-1 shadow"
           >
             <Activity className="w-3.5 h-3.5" />
-            Motion — Analyzing...
+            {t('livecam.motionAnalyzing')}
           </motion.div>
         )}
 
@@ -538,7 +540,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
             <div className="text-center text-white">
               <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-              <p className="text-sm font-medium">Scanning for threats...</p>
+              <p className="text-sm font-medium">{t('livecam.scanningThreats')}</p>
             </div>
           </div>
         )}
@@ -557,13 +559,13 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
         >
           {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Scan className="w-5 h-5" />}
           {cooldownRemaining > 0
-            ? `Next scan in ${cooldownRemaining}s`
+            ? `${t('livecam.nextScanIn')} ${cooldownRemaining}s`
             : isAnalyzing
-            ? 'Scanning...'
-            : 'Manual Threat Scan'}
+            ? t('livecam.scanning')
+            : t('livecam.manualScan')}
         </button>
         <p className="text-xs text-slate-500 mt-2 text-center">
-          Analyzes for fire, human intrusion &amp; animal threats
+          {t('livecam.analyzesFire')}
         </p>
       </div>
 
@@ -578,9 +580,9 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
           >
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-slate-700">Threat Assessment</span>
+                <span className="text-sm font-semibold text-slate-700">{t('livecam.threatAssessment')}</span>
                 <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase ${threatLevelColor[lastAnalysis.overallThreat] ?? 'bg-slate-100 text-slate-600'}`}>
-                  {lastAnalysis.overallThreat === 'none' ? '✓ Clear' : `⚠ ${lastAnalysis.overallThreat}`}
+                  {lastAnalysis.overallThreat === 'none' ? t('livecam.clear') : `⚠ ${lastAnalysis.overallThreat}`}
                 </span>
               </div>
 
@@ -588,29 +590,29 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
                 {/* Fire */}
                 <div className={`p-2.5 rounded-lg text-center ${lastAnalysis.fire.detected ? 'bg-red-50 border border-red-200' : 'bg-slate-50'}`}>
                   <Flame className={`w-5 h-5 mx-auto mb-1 ${lastAnalysis.fire.detected ? 'text-red-500' : 'text-slate-300'}`} />
-                  <p className={`text-xs font-medium ${lastAnalysis.fire.detected ? 'text-red-700' : 'text-slate-400'}`}>Fire</p>
+                  <p className={`text-xs font-medium ${lastAnalysis.fire.detected ? 'text-red-700' : 'text-slate-400'}`}>{t('livecam.fire')}</p>
                   <p className={`text-xs ${lastAnalysis.fire.detected ? 'text-red-600 font-bold' : 'text-slate-400'}`}>
-                    {lastAnalysis.fire.detected ? `${lastAnalysis.fire.confidence}%` : 'None'}
+                    {lastAnalysis.fire.detected ? `${lastAnalysis.fire.confidence}%` : t('livecam.none')}
                   </p>
                 </div>
 
                 {/* Human */}
                 <div className={`p-2.5 rounded-lg text-center ${lastAnalysis.human.detected && lastAnalysis.human.suspicious ? 'bg-orange-50 border border-orange-200' : 'bg-slate-50'}`}>
                   <User className={`w-5 h-5 mx-auto mb-1 ${lastAnalysis.human.detected && lastAnalysis.human.suspicious ? 'text-orange-500' : 'text-slate-300'}`} />
-                  <p className={`text-xs font-medium ${lastAnalysis.human.detected && lastAnalysis.human.suspicious ? 'text-orange-700' : 'text-slate-400'}`}>Intruder</p>
+                  <p className={`text-xs font-medium ${lastAnalysis.human.detected && lastAnalysis.human.suspicious ? 'text-orange-700' : 'text-slate-400'}`}>{t('livecam.intruder')}</p>
                   <p className={`text-xs ${lastAnalysis.human.detected && lastAnalysis.human.suspicious ? 'text-orange-600 font-bold' : 'text-slate-400'}`}>
-                    {lastAnalysis.human.detected && lastAnalysis.human.suspicious ? `${lastAnalysis.human.confidence}%` : 'None'}
+                    {lastAnalysis.human.detected && lastAnalysis.human.suspicious ? `${lastAnalysis.human.confidence}%` : t('livecam.none')}
                   </p>
                 </div>
 
                 {/* Animal */}
                 <div className={`p-2.5 rounded-lg text-center ${lastAnalysis.animal.detected ? 'bg-amber-50 border border-amber-200' : 'bg-slate-50'}`}>
                   <Dog className={`w-5 h-5 mx-auto mb-1 ${lastAnalysis.animal.detected ? 'text-amber-500' : 'text-slate-300'}`} />
-                  <p className={`text-xs font-medium ${lastAnalysis.animal.detected ? 'text-amber-700' : 'text-slate-400'}`}>Animal</p>
+                  <p className={`text-xs font-medium ${lastAnalysis.animal.detected ? 'text-amber-700' : 'text-slate-400'}`}>{t('livecam.animal')}</p>
                   <p className={`text-xs ${lastAnalysis.animal.detected ? 'text-amber-600 font-bold' : 'text-slate-400'}`}>
                     {lastAnalysis.animal.detected
                       ? lastAnalysis.animal.species.length > 0 ? lastAnalysis.animal.species[0] : `${lastAnalysis.animal.confidence}%`
-                      : 'None'}
+                      : t('livecam.none')}
                   </p>
                 </div>
               </div>
@@ -619,7 +621,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
                 <div className="bg-slate-50 rounded-lg p-3">
                   <p className="text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
                     <ShieldAlert className="w-3.5 h-3.5 text-slate-500" />
-                    Recommended Actions
+                    {t('livecam.recommendedActions')}
                   </p>
                   {lastAnalysis.recommendations.slice(0, 3).map((rec, i) => (
                     <p key={i} className="text-xs text-slate-600 mt-1">• {rec}</p>
@@ -630,13 +632,13 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
               {lastAnalysis.overallThreat === 'none' && (
                 <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-lg p-3">
                   <Shield className="w-4 h-4 flex-shrink-0" />
-                  <p className="text-xs font-medium">No threats detected. Farm is secure.</p>
+                  <p className="text-xs font-medium">{t('livecam.farmSecure')}</p>
                 </div>
               )}
 
               {analyzedAt && (
                 <p className="text-xs text-slate-400 mt-2 text-right">
-                  Scanned {new Date(analyzedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  {t('livecam.scannedAt', { time: new Date(analyzedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) })}
                 </p>
               )}
             </div>
@@ -647,7 +649,7 @@ export default function LiveCamera({ farmId, onThreatDetected }: LiveCameraProps
       {!lastAnalysis && isStreaming && (
         <div className="p-4 border-t border-slate-200 flex items-center gap-2 text-slate-500">
           <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-          <p className="text-xs">Watching for motion — will analyze automatically</p>
+          <p className="text-xs">{t('livecam.watchingMotion')}</p>
         </div>
       )}
 

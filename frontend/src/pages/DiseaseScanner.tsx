@@ -26,8 +26,10 @@ import {
 import { useFarmStore } from '@/stores/farmStore';
 import * as api from '@/services/apiService';
 import toast from 'react-hot-toast';
+import { useTranslation } from '@/stores/preferencesStore';
 
 export default function DiseaseScanner() {
+  const { t } = useTranslation();
   const { getCurrentFarm } = useFarmStore();
   const farm = getCurrentFarm();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,11 +65,11 @@ export default function DiseaseScanner() {
     const file = e.target.files?.[0];
     if (file) {
       if (!file.type.startsWith('image/')) {
-        toast.error('Please select an image file');
+        toast.error(t('scanner.errorNotImage'));
         return;
       }
       if (file.size > 10 * 1024 * 1024) {
-        toast.error('Image must be less than 10MB');
+        toast.error(t('scanner.errorTooBig'));
         return;
       }
       setSelectedFile(file);
@@ -92,7 +94,7 @@ export default function DiseaseScanner() {
         videoRef.current.srcObject = stream;
       }
     } catch (err) {
-      setCameraError('Could not access camera. Please check permissions.');
+      setCameraError(t('scanner.cameraError'));
       setShowCamera(false);
     }
   };
@@ -130,7 +132,7 @@ export default function DiseaseScanner() {
   // Analyze the image
   const analyzeImage = async () => {
     if (!selectedFile || !farm?.farmId) {
-      toast.error('Please select an image first');
+      toast.error(t('scanner.errorNoImage'));
       return;
     }
 
@@ -168,7 +170,7 @@ export default function DiseaseScanner() {
       );
 
       if (analysisResponse.status === 429) {
-        toast.error('AI service is busy — please wait 30 seconds and try again.', { duration: 6000 });
+        toast.error(t('scanner.errorBusy'), { duration: 6000 });
         return;
       }
       if (analysisResponse.error || !analysisResponse.data) {
@@ -177,7 +179,7 @@ export default function DiseaseScanner() {
 
       const analysis = analysisResponse.data.analysis;
       setAnalysisResult(analysis);
-      toast.success('Analysis complete!');
+      toast.success(t('scanner.analysisComplete'));
       fetchHistory(); // Refresh history
 
       // Save as alert so it appears in History and Dashboard
@@ -198,7 +200,7 @@ export default function DiseaseScanner() {
       }
     } catch (err) {
       console.error('Analysis error:', err);
-      toast.error(err instanceof Error ? err.message : 'Analysis failed');
+      toast.error(err instanceof Error ? err.message : t('scanner.analysisFailed'));
     } finally {
       setIsAnalyzing(false);
     }
@@ -226,9 +228,9 @@ export default function DiseaseScanner() {
       <div className="page-container">
         <div className="empty-state">
           <Camera className="empty-state-icon" />
-          <h2 className="empty-state-title">No Farm Selected</h2>
+          <h2 className="empty-state-title">{t('scanner.noFarm')}</h2>
           <p className="empty-state-description">
-            Please select a farm to use the disease scanner.
+            {t('scanner.selectFarm')}
           </p>
         </div>
       </div>
@@ -241,10 +243,10 @@ export default function DiseaseScanner() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
           <Bug className="w-7 h-7 text-green-600" />
-          Disease Scanner
+          {t('scanner.title')}
         </h1>
         <p className="text-slate-500 mt-1">
-          AI-powered plant disease detection for {farm.name}
+          {t('scanner.forFarm', { farm: farm.name })}
         </p>
       </div>
 
@@ -254,7 +256,7 @@ export default function DiseaseScanner() {
         <div className="card">
           <h2 className="section-header flex items-center gap-2">
             <ImageIcon className="w-5 h-5 text-slate-400" />
-            Capture or Upload Image
+            {t('scanner.captureUpload')}
           </h2>
 
           {!selectedImage && !showCamera && (
@@ -264,8 +266,8 @@ export default function DiseaseScanner() {
                 className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-slate-300 rounded-xl hover:border-green-500 hover:bg-green-50 transition-colors"
               >
                 <Camera className="w-10 h-10 text-green-600" />
-                <span className="font-medium text-slate-700">Take Photo</span>
-                <span className="text-xs text-slate-500">Use device camera</span>
+                <span className="font-medium text-slate-700">{t('scanner.takePhoto')}</span>
+                <span className="text-xs text-slate-500">{t('scanner.useCamera')}</span>
               </button>
 
               <button
@@ -273,8 +275,8 @@ export default function DiseaseScanner() {
                 className="flex flex-col items-center gap-3 p-6 border-2 border-dashed border-slate-300 rounded-xl hover:border-green-500 hover:bg-green-50 transition-colors"
               >
                 <Upload className="w-10 h-10 text-green-600" />
-                <span className="font-medium text-slate-700">Upload Image</span>
-                <span className="text-xs text-slate-500">JPG, PNG up to 10MB</span>
+                <span className="font-medium text-slate-700">{t('scanner.uploadImage')}</span>
+                <span className="text-xs text-slate-500">{t('scanner.jpgPng')}</span>
               </button>
             </div>
           )}
@@ -300,13 +302,13 @@ export default function DiseaseScanner() {
                       className="px-6 py-3 bg-green-600 text-white rounded-full font-medium hover:bg-green-700 flex items-center gap-2"
                     >
                       <Camera className="w-5 h-5" />
-                      Capture
+                      {t('scanner.capture')}
                     </button>
                     <button
                       onClick={stopCamera}
                       className="px-6 py-3 bg-slate-600 text-white rounded-full font-medium hover:bg-slate-700"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </div>
@@ -334,17 +336,17 @@ export default function DiseaseScanner() {
               {/* Crop type override — user specifies what plant this is */}
               <div className="mt-4">
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Plant / Crop Type <span className="text-slate-400 font-normal">(optional)</span>
+                  {t('scanner.cropType')} <span className="text-slate-400 font-normal">({t('scanner.optional')})</span>
                 </label>
                 <input
                   type="text"
                   value={scanCropType}
                   onChange={(e) => setScanCropType(e.target.value)}
-                  placeholder="e.g. Rice, Tomato, Wheat — leave blank to auto-detect"
+                  placeholder={t('scanner.cropTypePlaceholder')}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
                 <p className="text-xs text-slate-400 mt-1">
-                  Specify the plant type for more accurate results. Leave blank to let AI identify it.
+                  {t('scanner.cropTypeHint')}
                 </p>
               </div>
 
@@ -357,12 +359,12 @@ export default function DiseaseScanner() {
                   {isAnalyzing ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Analyzing...
+                      {t('scanner.analyzing')}
                     </>
                   ) : (
                     <>
                       <Bug className="w-5 h-5" />
-                      Analyze for Diseases
+                      {t('scanner.analyze')}
                     </>
                   )}
                 </button>
@@ -387,7 +389,7 @@ export default function DiseaseScanner() {
         <div className="card">
           <h2 className="section-header flex items-center gap-2">
             <Leaf className="w-5 h-5 text-slate-400" />
-            Analysis Results
+            {t('scanner.results')}
           </h2>
 
           <AnimatePresence mode="wait">
@@ -400,8 +402,8 @@ export default function DiseaseScanner() {
                 className="flex flex-col items-center justify-center py-12"
               >
                 <Loader2 className="w-12 h-12 text-green-600 animate-spin mb-4" />
-                <p className="text-slate-600 font-medium">Analyzing image with AI...</p>
-                <p className="text-sm text-slate-500 mt-1">This may take a few seconds</p>
+                <p className="text-slate-600 font-medium">{t('scanner.analyzingAi')}</p>
+                <p className="text-sm text-slate-500 mt-1">{t('scanner.waitSeconds')}</p>
               </motion.div>
             ) : analysisResult ? (
               <motion.div
@@ -420,7 +422,7 @@ export default function DiseaseScanner() {
                     )}
                     <div>
                       <h3 className={`font-semibold ${analysisResult.detected ? 'text-red-900' : 'text-green-900'}`}>
-                        {analysisResult.detected ? analysisResult.disease || 'Disease Detected' : 'Healthy Plant'}
+                        {analysisResult.detected ? analysisResult.disease || 'Disease Detected' : t('scanner.healthy')}
                       </h3>
                       {analysisResult.hindiName && (
                         <p className="text-sm text-slate-600">{analysisResult.hindiName}</p>
@@ -434,7 +436,7 @@ export default function DiseaseScanner() {
                   </div>
                   {analysisResult.confidence > 0 && (
                     <p className="text-sm text-slate-600 mt-2">
-                      Confidence: {analysisResult.confidence}%
+                      {t('common.confidence')}: {analysisResult.confidence}%
                     </p>
                   )}
                 </div>
@@ -451,7 +453,7 @@ export default function DiseaseScanner() {
                       <div>
                         <h4 className="font-medium text-slate-900 flex items-center gap-2 mb-2">
                           <AlertTriangle className="w-4 h-4 text-yellow-600" />
-                          Symptoms
+                          {t('scanner.symptoms')}
                         </h4>
                         <ul className="space-y-1">
                           {analysisResult.symptoms.map((s, i) => (
@@ -469,7 +471,7 @@ export default function DiseaseScanner() {
                       <div>
                         <h4 className="font-medium text-slate-900 flex items-center gap-2 mb-2">
                           <Pill className="w-4 h-4 text-blue-600" />
-                          Treatment
+                          {t('scanner.treatment')}
                         </h4>
                         <ul className="space-y-1">
                           {analysisResult.treatment.map((t, i) => (
@@ -487,7 +489,7 @@ export default function DiseaseScanner() {
                       <div>
                         <h4 className="font-medium text-slate-900 flex items-center gap-2 mb-2">
                           <Shield className="w-4 h-4 text-green-600" />
-                          Prevention
+                          {t('scanner.prevention')}
                         </h4>
                         <ul className="space-y-1">
                           {analysisResult.prevention.map((p, i) => (
@@ -504,17 +506,17 @@ export default function DiseaseScanner() {
                     <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                       <h4 className="font-medium text-amber-900 flex items-center gap-2 mb-2 text-sm">
                         <span className="text-base">🇮🇳</span>
-                        Indian Farm Advisory
+                        {t('scanner.indianAdvice')}
                       </h4>
                       <div className="space-y-2 text-sm text-amber-800">
                         <p>
-                          <span className="font-semibold">Estimated loss if untreated:</span>{' '}
+                          <span className="font-semibold">{t('scanner.estimatedLoss')}</span>{' '}
                           {analysisResult.severity === 'critical' ? '40–70% of yield' :
                            analysisResult.severity === 'high' ? '20–40% of yield' :
                            analysisResult.severity === 'medium' ? '5–20% of yield' : 'Minimal (< 5%)'}
                         </p>
                         <p>
-                          <span className="font-semibold">Common Indian products:</span>{' '}
+                          <span className="font-semibold">{t('scanner.commonProducts')}</span>{' '}
                           {analysisResult.disease?.toLowerCase().includes('blight') ? 'Mancozeb 75% WP (Dithane M-45), Copper oxychloride (Blitox-50)' :
                            analysisResult.disease?.toLowerCase().includes('mildew') ? 'Sulfex (Sulphur 80% WP), Hexaconazole (Contaf Plus)' :
                            analysisResult.disease?.toLowerCase().includes('rust') ? 'Propiconazole (Tilt 25 EC), Mancozeb' :
@@ -522,7 +524,7 @@ export default function DiseaseScanner() {
                            'Consult local agri-input dealer for crop-specific fungicide'}
                         </p>
                         <p className="text-xs text-amber-700 mt-1">
-                          For personalized advice, contact your nearest <span className="font-semibold">Krishi Vigyan Kendra (KVK)</span> or call <span className="font-semibold">Kisan Call Centre: 1800-180-1551</span> (toll-free).
+                          {t('scanner.kvkAdvice')}
                         </p>
                       </div>
                     </div>
@@ -531,8 +533,8 @@ export default function DiseaseScanner() {
 
                 {/* Powered by AI badge */}
                 <div className="flex items-center justify-center gap-1.5 pt-2">
-                  <span className="text-xs text-slate-400">Powered by</span>
-                  <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">AWS Bedrock AI</span>
+                  <span className="text-xs text-slate-400">{t('scanner.poweredByLabel')}</span>
+                  <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">{t('scanner.poweredBy')}</span>
                 </div>
               </motion.div>
             ) : (
@@ -544,7 +546,7 @@ export default function DiseaseScanner() {
               >
                 <Bug className="w-12 h-12 text-slate-300 mb-4" />
                 <p className="text-slate-500">
-                  Take or upload a photo of your crop to detect diseases
+                  {t('scanner.noPicture')}
                 </p>
               </motion.div>
             )}
@@ -557,7 +559,7 @@ export default function DiseaseScanner() {
         <div className="card mt-6">
           <h2 className="section-header flex items-center gap-2">
             <Clock className="w-5 h-5 text-slate-400" />
-            Recent Scans
+            {t('scanner.recentScans')}
           </h2>
 
           <div className="space-y-3 mt-4">
@@ -597,12 +599,12 @@ export default function DiseaseScanner() {
 
       {/* Tips */}
       <div className="card mt-6 bg-blue-50 border border-blue-200">
-        <h3 className="font-medium text-blue-900 mb-2">Tips for Better Results</h3>
+        <h3 className="font-medium text-blue-900 mb-2">{t('scanner.tips')}</h3>
         <ul className="text-sm text-blue-700 space-y-1">
-          <li>• Take photos in good natural lighting</li>
-          <li>• Focus on affected leaves or plant parts</li>
-          <li>• Include multiple angles if possible</li>
-          <li>• Avoid blurry or dark images</li>
+          <li>• {t('scanner.tip1')}</li>
+          <li>• {t('scanner.tip2')}</li>
+          <li>• {t('scanner.tip3')}</li>
+          <li>• {t('scanner.tip4')}</li>
         </ul>
       </div>
     </div>

@@ -24,6 +24,7 @@ import {
 import { useFarmStore } from '@/stores/farmStore';
 import * as api from '@/services/apiService';
 import { format } from 'date-fns';
+import { useTranslation } from '@/stores/preferencesStore';
 
 type AlertType = 'disease' | 'pest' | 'weather' | 'irrigation' | 'satellite' | 'camera';
 
@@ -46,6 +47,7 @@ const severityColors: Record<string, { bg: string; text: string; border: string 
 const defaultColors = { bg: 'bg-slate-50', text: 'text-slate-700', border: 'border-slate-300' };
 
 export default function ThreatHistory() {
+  const { t } = useTranslation();
   const { getCurrentFarm } = useFarmStore();
   const farm = getCurrentFarm();
 
@@ -127,7 +129,7 @@ export default function ThreatHistory() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Alert History</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t('threats.title')}</h1>
           <p className="text-slate-500 mt-1">
             {filteredAlerts.length} alerts for {farm?.name || 'your farm'}
           </p>
@@ -151,10 +153,10 @@ export default function ThreatHistory() {
               onChange={(e) => setDateRange(e.target.value as typeof dateRange)}
               className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="all">All time</option>
-              <option value="24h">Last 24 hours</option>
-              <option value="7d">Last 7 days</option>
-              <option value="30d">Last 30 days</option>
+              <option value="all">{t('threats.allTime')}</option>
+              <option value="24h">{t('threats.last24h')}</option>
+              <option value="7d">{t('threats.last7d')}</option>
+              <option value="30d">{t('threats.last30d')}</option>
             </select>
           </div>
         </div>
@@ -165,7 +167,7 @@ export default function ThreatHistory() {
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-sm font-medium text-slate-500 flex items-center gap-1">
             <Filter className="w-4 h-4" />
-            Filter by type:
+            {t('threats.filterByType')}
           </span>
 
           {(['disease', 'pest', 'weather', 'irrigation', 'satellite', 'camera'] as AlertType[]).map((type) => {
@@ -193,7 +195,7 @@ export default function ThreatHistory() {
               onClick={() => setSelectedTypes([])}
               className="text-sm text-slate-500 hover:text-slate-700"
             >
-              Clear filters
+              {t('threats.clearFilters')}
             </button>
           )}
         </div>
@@ -203,18 +205,18 @@ export default function ThreatHistory() {
       {loading ? (
         <div className="card text-center py-12">
           <RefreshCw className="w-8 h-8 text-slate-300 mx-auto mb-4 animate-spin" />
-          <p className="text-slate-500">Loading alerts...</p>
+          <p className="text-slate-500">{t('threats.loading')}</p>
         </div>
       ) : filteredAlerts.length === 0 ? (
         <div className="card text-center py-12">
           <CheckCircle className="w-12 h-12 text-green-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-slate-700 mb-2">
-            No alerts found
+            {t('threats.noAlerts')}
           </h3>
           <p className="text-slate-500">
             {selectedTypes.length > 0
-              ? 'Try adjusting your filters'
-              : 'Your farm has been secure during this period'}
+              ? t('threats.adjustFilters')
+              : t('threats.farmSecure')}
           </p>
         </div>
       ) : (
@@ -480,6 +482,7 @@ function AlertDetailModal({
   alert: api.Alert;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const Icon = alertIcons[alert.alertType as AlertType] || AlertTriangle;
   const colors = severityColors[alert.severity] || defaultColors;
   const date = new Date(alert.alertTimestamp);
@@ -841,7 +844,7 @@ function AlertDetailModal({
             <div>
               <p className="text-xs text-slate-500 uppercase">Status</p>
               <p className="font-medium text-slate-900">
-                {alert.isRead ? 'Read' : 'Unread'}
+                {alert.isRead ? t('threats.read') : t('threats.unread')}
               </p>
             </div>
           </div>
@@ -853,7 +856,7 @@ function AlertDetailModal({
             onClick={onClose}
             className="w-full py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 font-medium"
           >
-            Close
+            {t('threats.close')}
           </button>
         </div>
       </motion.div>
