@@ -22,14 +22,34 @@ const DiseaseScanner = lazy(() => import('@/pages/DiseaseScanner'));
 
 // Hooks and Stores
 import { useAuthStore } from '@/stores/authStore';
+import { useFarmStore, DEMO_FARMS } from '@/stores/farmStore';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { usePreferencesStore } from '@/stores/preferencesStore';
 import { useIsMobile } from '@/hooks/useIsMobile';
+
+// Demo mode detection
+const IS_DEMO_BUILD = import.meta.env.VITE_DEMO_MODE === 'true';
+
+// Seed demo state at module level — before React renders and before any
+// persist hydration race can overwrite. Also re-runs on every page load
+// (including incognito refresh) so farms are always guaranteed to be present.
+if (typeof window !== 'undefined') {
+  if (IS_DEMO_BUILD || new URLSearchParams(window.location.search).has('demo')) {
+    useAuthStore.getState().instantDemoLogin();
+    useFarmStore.getState().setFarms(DEMO_FARMS);
+    useFarmStore.getState().setCurrentFarm(DEMO_FARMS[0].farmId);
+  }
+}
 
 /**
  * Protected route wrapper
  */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  // Demo build: always authenticated, never redirect to login
+  if (IS_DEMO_BUILD) {
+    return <>{children}</>;
+  }
+
   const { isAuthenticated, isLoading } = useAuthStore();
 
   if (isLoading) {
@@ -69,8 +89,11 @@ function App() {
 
       <Suspense fallback={<LoadingScreen />}>
         <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<Login />} />
+          {/* Public routes — on demo build, /login redirects straight to dashboard */}
+          <Route
+            path="/login"
+            element={IS_DEMO_BUILD ? <Navigate to="/" replace /> : <Login />}
+          />
 
           {/* Protected routes with layout */}
           <Route

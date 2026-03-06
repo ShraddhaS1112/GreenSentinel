@@ -51,6 +51,9 @@ interface AuthState {
   updateLanguage: (language: Language) => void;
   clearError: () => void;
 
+  // Instant demo login for judge evaluation (no OTP required)
+  instantDemoLogin: () => void;
+
   // Legacy mock login (fallback when Cognito not configured)
   mockLogin: (phoneNumber: string, otp: string) => Promise<void>;
 }
@@ -285,6 +288,23 @@ export const useAuthStore = create<AuthState>()(
       // Clear error
       clearError: () => {
         set({ error: null });
+      },
+
+      // Instant demo login — sets a fixed userId so farmStore can seed SK farms directly
+      instantDemoLogin: () => {
+        set({
+          user: {
+            userId: 'sk-demo-user',
+            phoneNumber: '9876543210',
+            name: 'SK Demo Farmer',
+            language: 'en',
+            alertPreferences: { voiceEnabled: true, textEnabled: true },
+          },
+          isAuthenticated: true,
+          isLoading: false,
+          signInStep: 'DONE',
+          error: null,
+        });
       },
 
       // Legacy mock login (for demo/testing)

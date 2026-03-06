@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Phone, Lock, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
+import { Shield, Phone, Lock, ArrowRight, Loader2, ArrowLeft, FlaskConical } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
 import { useTranslation } from '@/stores/preferencesStore';
@@ -25,6 +25,7 @@ export default function Login() {
     signInStep,
     isAuthenticated,
     cognitoConfigured,
+    instantDemoLogin,
   } = useAuthStore();
 
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -202,8 +203,22 @@ export default function Login() {
           )}
         </div>
 
+        {/* Judge Demo access — one-click, no OTP */}
+        <div className="mt-4">
+          <button
+            onClick={() => {
+              instantDemoLogin();
+              navigate('/');
+            }}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white transition-colors"
+          >
+            <FlaskConical className="w-4 h-4" />
+            <span className="text-sm font-medium">Judge Demo — SK Farms (No login required)</span>
+          </button>
+        </div>
+
         {/* Footer */}
-        <p className="text-center text-primary-200 text-sm mt-6">
+        <p className="text-center text-primary-200 text-sm mt-4">
           {t('login.terms')}
         </p>
 

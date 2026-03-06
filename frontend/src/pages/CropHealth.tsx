@@ -121,19 +121,19 @@ export default function CropHealth() {
   // True if we have no real data at all
   const noRealData = !loading && healthData !== null && realHistory.length === 0;
 
-  // Chart data from real history only
+  // Chart data from real history
   const chartData = useMemo(() => {
-    const history = [...realHistory].reverse(); // Oldest first for chart
+    const chartHistory = [...realHistory].reverse(); // Oldest first for chart
 
     return {
-      labels: history.map((d) => {
+      labels: chartHistory.map((d) => {
         const date = new Date(d.recordDate);
         return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
       }),
       datasets: [
         {
           label: t('dashboard.cropHealth'),
-          data: history.map((d) => d.healthScore),
+          data: chartHistory.map((d) => d.healthScore),
           fill: true,
           borderColor: '#16a34a',
           backgroundColor: 'rgba(22, 163, 74, 0.1)',
