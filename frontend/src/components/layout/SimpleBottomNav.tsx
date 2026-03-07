@@ -8,23 +8,17 @@
 import { NavLink } from 'react-router-dom';
 import { Home, Camera, Phone, Settings } from 'lucide-react';
 import clsx from 'clsx';
-import { usePreferencesStore } from '@/stores/preferencesStore';
+import { useTranslation } from '@/stores/preferencesStore';
 
 const navItems = [
-  { path: '/', label: 'Home', labelHi: 'होम', labelKn: 'ಮನೆ', icon: Home },
-  { path: '/scanner', label: 'Scan', labelHi: 'स्कैन', labelKn: 'ಸ್ಕ್ಯಾನ್', icon: Camera },
-  { path: 'tel:1800-180-1551', label: 'Help', labelHi: 'मदद', labelKn: 'ಸಹಾಯ', icon: Phone, isExternal: true },
-  { path: '/settings', label: 'Settings', labelHi: 'सेटिंग', labelKn: 'ಸೆಟ್ಟಿಂಗ್', icon: Settings },
+  { path: '/', key: 'nav.home', icon: Home },
+  { path: '/scanner', key: 'nav.scan', icon: Camera },
+  { path: 'tel:1800-180-1551', key: 'nav.help', icon: Phone, isExternal: true },
+  { path: '/settings', key: 'nav.settings', icon: Settings },
 ];
 
 export default function SimpleBottomNav() {
-  const { language } = usePreferencesStore();
-
-  const getLabel = (item: typeof navItems[0]) => {
-    if (language === 'hi') return item.labelHi;
-    if (language === 'kn') return item.labelKn;
-    return item.label;
-  };
+  const { t } = useTranslation();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50 safe-area-bottom">
@@ -39,7 +33,7 @@ export default function SimpleBottomNav() {
               <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center mb-1">
                 <item.icon className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xs font-medium">{getLabel(item)}</span>
+              <span className="text-xs font-medium">{t(item.key)}</span>
             </a>
           ) : (
             <NavLink
@@ -67,7 +61,7 @@ export default function SimpleBottomNav() {
                       )}
                     />
                   </div>
-                  <span className="text-xs font-medium">{getLabel(item)}</span>
+                  <span className="text-xs font-medium">{t(item.key)}</span>
                 </>
               )}
             </NavLink>

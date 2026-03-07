@@ -71,6 +71,34 @@ interface FarmState {
 }
 
 // =============================================================================
+// DEMO FARMS — Real SK Farm data for judge evaluation
+// Uses the actual registered farm so all backend data (crop health, alerts,
+// satellite, weather) is real and live.
+// =============================================================================
+
+export const DEMO_FARMS: Farm[] = [
+  {
+    farmId: 'farm_1772203456065',
+    userId: 'sk-demo-user',
+    name: 'SK Farm',
+    location: {
+      latitude: 12.612954053760182,
+      longitude: 77.15492858465744,
+      address: 'Channapatna',
+      district: 'Ramanagara',
+      state: 'Karnataka',
+    },
+    area: 5,
+    cropType: 'Grapes',
+    cameras: [],
+    alertThresholds: { fire: 80, human: 80, animal: 75 },
+    language: 'en' as any,
+    createdAt: '2026-02-27T14:44:16.187Z',
+    updatedAt: '2026-02-27T14:50:00.000Z',
+  },
+];
+
+// =============================================================================
 // HELPER: Convert between API and local Farm types
 // =============================================================================
 
@@ -182,6 +210,17 @@ export const useFarmStore = create<FarmState>()(
       // =========================================================================
 
       fetchFarms: async (userId?: string) => {
+        // Judge demo mode — seed pre-built SK farms without any API calls
+        if (userId === 'sk-demo-user') {
+          set({
+            farms: DEMO_FARMS,
+            currentFarmId: get().currentFarmId || DEMO_FARMS[0]?.farmId || null,
+            isLoading: false,
+            lastSyncedAt: new Date().toISOString(),
+          });
+          return;
+        }
+
         // Require a real authenticated userId — never fall back to a shared demo account
         if (!userId || userId.startsWith('demo')) {
           console.warn('fetchFarms: no authenticated userId, skipping fetch');
@@ -354,8 +393,13 @@ export const useFarmStore = create<FarmState>()(
       name: 'green-sentinel-farm',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        farms: state.farms,
-        currentFarmId: state.currentFarmId,
+        // Never persist demo farms — they are always seeded fresh on load
+        farms: state.farms.filter((f) => f.userId !== 'sk-demo-user'),
+        currentFarmId: state.farms.find(
+          (f) => f.farmId === state.currentFarmId && f.userId !== 'sk-demo-user'
+        )
+          ? state.currentFarmId
+          : null,
         threats: state.threats.slice(0, 50),
         lastSyncedAt: state.lastSyncedAt,
       }),

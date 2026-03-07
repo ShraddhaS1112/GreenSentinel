@@ -8,11 +8,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Phone, Lock, ArrowRight, Loader2, ArrowLeft } from 'lucide-react';
+import { Shield, Phone, Lock, ArrowRight, Loader2, ArrowLeft, FlaskConical } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import toast from 'react-hot-toast';
+import { useTranslation } from '@/stores/preferencesStore';
 
 export default function Login() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const {
     sendOtp,
@@ -23,6 +25,7 @@ export default function Login() {
     signInStep,
     isAuthenticated,
     cognitoConfigured,
+    instantDemoLogin,
   } = useAuthStore();
 
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -47,13 +50,13 @@ export default function Login() {
     // Validate phone number (Indian mobile)
     const cleaned = phoneNumber.replace(/\D/g, '');
     if (cleaned.length !== 10 || !/^[6-9]/.test(cleaned)) {
-      toast.error('Please enter a valid 10-digit mobile number');
+      toast.error(t('login.invalidPhone'));
       return;
     }
 
     const success = await sendOtp(phoneNumber);
     if (success) {
-      toast.success('OTP sent to your phone');
+      toast.success(t('login.otpSent'));
     }
   };
 
@@ -62,13 +65,13 @@ export default function Login() {
     clearError();
 
     if (otp.length !== 6) {
-      toast.error('Please enter a valid 6-digit OTP');
+      toast.error(t('login.invalidOtp'));
       return;
     }
 
     const success = await verifyOtp(otp);
     if (success) {
-      toast.success('Welcome to Green Sentinel!');
+      toast.success(t('login.welcome'));
       navigate('/');
     }
   };
@@ -92,20 +95,20 @@ export default function Login() {
           </div>
           <h1 className="text-2xl font-bold text-white">Green Sentinel</h1>
           <p className="text-primary-200 mt-2">
-            Digital Immune System for Indian Agriculture
+            {t('login.tagline')}
           </p>
         </div>
 
         {/* Login card */}
         <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
           <h2 className="text-xl font-semibold text-slate-900 mb-6">
-            {signInStep === 'PHONE' ? 'Welcome Back' : 'Enter OTP'}
+            {signInStep === 'PHONE' ? t('login.welcomeBack') : t('login.enterOtp')}
           </h2>
 
           {signInStep === 'PHONE' ? (
             <form onSubmit={handlePhoneSubmit}>
               <div className="mb-4">
-                <label className="label">Mobile Number</label>
+                <label className="label">{t('login.mobileNumber')}</label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-500">
                     <Phone className="w-4 h-4" />
@@ -124,7 +127,7 @@ export default function Login() {
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  We'll send you a verification code via SMS
+                  {t('login.smsNote')}
                 </p>
               </div>
 
@@ -137,7 +140,7 @@ export default function Login() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    Get OTP
+                    {t('login.getOtp')}
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -146,7 +149,7 @@ export default function Login() {
           ) : (
             <form onSubmit={handleOtpSubmit}>
               <div className="mb-4">
-                <label className="label">Verification Code</label>
+                <label className="label">{t('login.verificationCode')}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
@@ -176,7 +179,7 @@ export default function Login() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    Verify & Login
+                    {t('login.verifyLogin')}
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -188,7 +191,7 @@ export default function Login() {
                 className="btn-ghost w-full text-slate-600"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Change phone number
+                {t('login.changePhone')}
               </button>
             </form>
           )}
@@ -200,9 +203,23 @@ export default function Login() {
           )}
         </div>
 
+        {/* Judge Demo access — one-click, no OTP */}
+        <div className="mt-4">
+          <button
+            onClick={() => {
+              instantDemoLogin();
+              navigate('/');
+            }}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white transition-colors"
+          >
+            <FlaskConical className="w-4 h-4" />
+            <span className="text-sm font-medium">Judge Demo — SK Farms (No login required)</span>
+          </button>
+        </div>
+
         {/* Footer */}
-        <p className="text-center text-primary-200 text-sm mt-6">
-          By continuing, you agree to our Terms of Service and Privacy Policy
+        <p className="text-center text-primary-200 text-sm mt-4">
+          {t('login.terms')}
         </p>
 
         {/* Demo hint - only show when Cognito not configured */}

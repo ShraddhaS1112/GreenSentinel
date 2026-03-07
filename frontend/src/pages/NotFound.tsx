@@ -4,17 +4,19 @@
 
 import { Link } from 'react-router-dom';
 import { Home, ArrowLeft } from 'lucide-react';
+import { useTranslation } from '@/stores/preferencesStore';
 
 export default function NotFound() {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="text-center">
         <div className="text-9xl font-bold text-slate-200 mb-4">404</div>
         <h1 className="text-2xl font-bold text-slate-900 mb-2">
-          Page Not Found
+          {t('notFound.title')}
         </h1>
         <p className="text-slate-500 mb-8 max-w-md">
-          The page you're looking for doesn't exist or has been moved.
+          {t('notFound.message')}
         </p>
         <div className="flex items-center justify-center gap-4">
           <button
@@ -22,11 +24,11 @@ export default function NotFound() {
             className="btn-secondary"
           >
             <ArrowLeft className="w-4 h-4" />
-            Go Back
+            {t('notFound.goBack')}
           </button>
           <Link to="/" className="btn-primary">
             <Home className="w-4 h-4" />
-            Home
+            {t('notFound.home')}
           </Link>
         </div>
       </div>

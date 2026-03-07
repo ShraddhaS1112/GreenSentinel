@@ -6,6 +6,7 @@ import { X, Flame, User, PawPrint } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { ThreatDetection, ThreatType } from '@green-sentinel/shared';
 import { formatDistanceToNow } from 'date-fns';
+import { useTranslation } from '@/stores/preferencesStore';
 
 interface NotificationPanelProps {
   threats: ThreatDetection[];
@@ -28,6 +29,7 @@ export default function NotificationPanel({
   threats,
   onClose,
 }: NotificationPanelProps) {
+  const { t } = useTranslation();
   return (
     <motion.div
       initial={{ opacity: 0, y: -10 }}
@@ -37,7 +39,7 @@ export default function NotificationPanel({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
-        <h3 className="font-semibold text-slate-900">Recent Alerts</h3>
+        <h3 className="font-semibold text-slate-900">{t('common.recentAlerts')}</h3>
         <button
           onClick={onClose}
           className="p-1 text-slate-400 hover:text-slate-600"
@@ -50,7 +52,7 @@ export default function NotificationPanel({
       <div className="max-h-72 overflow-y-auto">
         {threats.length === 0 ? (
           <div className="p-8 text-center text-slate-500">
-            <p className="text-sm">No recent alerts</p>
+            <p className="text-sm">{t('common.noRecentAlerts')}</p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
@@ -70,10 +72,10 @@ export default function NotificationPanel({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-slate-900 capitalize">
-                      {threat.threatType} Detected
+                      {threat.threatType} {t('common.detected')}
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      {threat.confidenceScore}% confidence
+                      {threat.confidenceScore}% {t('common.confidence')}
                     </p>
                     <p className="text-xs text-slate-400 mt-1">
                       {formatDistanceToNow(new Date(threat.createdAt), {
@@ -95,7 +97,7 @@ export default function NotificationPanel({
             href="/threats"
             className="text-sm text-primary-600 hover:text-primary-700 font-medium"
           >
-            View all alerts →
+            {t('common.viewAllAlerts')}
           </a>
         </div>
       )}

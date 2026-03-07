@@ -32,6 +32,7 @@ import {
 import { useFarmStore } from '@/stores/farmStore';
 import * as api from '@/services/apiService';
 import { ExplainedLabel } from '@/components/common/InfoTooltip';
+import { useTranslation } from '@/stores/preferencesStore';
 
 // Animation variants
 const cardVariants = {
@@ -55,6 +56,7 @@ interface DashboardData {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { getCurrentFarm, farms } = useFarmStore();
   const farm = getCurrentFarm();
 
@@ -151,7 +153,7 @@ export default function Dashboard() {
         icon: AlertTriangle,
         color: 'text-red-600',
         bg: 'bg-red-50 border-red-200',
-        text: `${topDisease.risk}% risk of ${topDisease.name} — apply preventive measures before next rainfall.`,
+        text: t('dashboard.insightDiseaseRisk', { risk: topDisease.risk, name: topDisease.name }),
       });
     }
 
@@ -161,14 +163,14 @@ export default function Dashboard() {
         icon: TrendingDown,
         color: 'text-amber-600',
         bg: 'bg-amber-50 border-amber-200',
-        text: `Crop health dropped ${Math.abs(healthStats.change)} points this week. Inspect for moisture stress or nutrient deficiency.`,
+        text: t('dashboard.insightDeclining', { change: Math.abs(healthStats.change) }),
       });
     } else if (healthStats.trend === 'improving') {
       insights.push({
         icon: TrendingUp,
         color: 'text-green-600',
         bg: 'bg-green-50 border-green-200',
-        text: `Crop health improving +${healthStats.change} pts this week. Current conditions are favorable — maintain irrigation schedule.`,
+        text: t('dashboard.insightImproving', { change: healthStats.change }),
       });
     }
 
@@ -178,7 +180,7 @@ export default function Dashboard() {
         icon: Leaf,
         color: 'text-orange-600',
         bg: 'bg-orange-50 border-orange-200',
-        text: `NDVI at ${healthStats.ndvi.toFixed(2)} — vegetation density is low. Consider soil testing and nutrient application.`,
+        text: t('dashboard.insightLowNdvi', { ndvi: healthStats.ndvi.toFixed(2) }),
       });
     }
 
@@ -188,20 +190,20 @@ export default function Dashboard() {
         icon: CheckCircle2,
         color: 'text-green-600',
         bg: 'bg-green-50 border-green-200',
-        text: `All systems normal. Monitoring active. No threats detected in the last 24 hours.`,
+        text: t('dashboard.insightAllClear'),
       });
       if (latest?.diseases[0]) {
         insights.push({
           icon: Shield,
           color: 'text-blue-600',
           bg: 'bg-blue-50 border-blue-200',
-          text: `Low disease pressure detected. Conditions unfavorable for ${latest.diseases[0].name} this week.`,
+          text: t('dashboard.insightLowDisease', { name: latest.diseases[0].name }),
         });
       }
     }
 
     return insights.slice(0, 3);
-  }, [data.forecast, healthStats]);
+  }, [data.forecast, healthStats, t]);
 
   const healthColor =
     healthStats.currentScore >= 70 ? 'text-green-600' :
@@ -212,20 +214,20 @@ export default function Dashboard() {
     healthStats.currentScore >= 50 ? 'bg-amber-100' : 'bg-red-100';
 
   const healthLabel =
-    healthStats.currentScore >= 70 ? 'Healthy' :
-    healthStats.currentScore >= 50 ? 'Moderate' : 'At Risk';
+    healthStats.currentScore >= 70 ? t('dashboard.labelHealthy') :
+    healthStats.currentScore >= 50 ? t('dashboard.labelModerate') : t('dashboard.atRisk');
 
   if (!farm) {
     return (
       <div className="page-container">
         <div className="empty-state">
           <AlertTriangle className="empty-state-icon" />
-          <h2 className="empty-state-title">No Farm Selected</h2>
+          <h2 className="empty-state-title">{t('dashboard.noFarm')}</h2>
           <p className="empty-state-description">
-            Please select a farm from the sidebar or create a new one.
+            {t('dashboard.selectFarm')}
           </p>
           <Link to="/farms" className="btn-primary mt-4">
-            Manage Farms
+            {t('dashboard.manageFarms')}
           </Link>
         </div>
       </div>
@@ -252,7 +254,7 @@ export default function Dashboard() {
           className="btn-secondary flex items-center gap-2 flex-shrink-0"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">Refresh</span>
+          <span className="hidden sm:inline">{t('common.refresh')}</span>
         </button>
       </div>
 
@@ -279,11 +281,11 @@ export default function Dashboard() {
               </p>
               <div className="flex items-center gap-1 mt-1">
                 {healthStats.trend === 'improving' ? (
-                  <><TrendingUp className="w-3 h-3 text-green-500" /><span className="text-xs text-green-600">+{healthStats.change} this week</span></>
+                  <><TrendingUp className="w-3 h-3 text-green-500" /><span className="text-xs text-green-600">{t('dashboard.thisWeekChange', { change: healthStats.change })}</span></>
                 ) : healthStats.trend === 'declining' ? (
-                  <><TrendingDown className="w-3 h-3 text-red-500" /><span className="text-xs text-red-600">{healthStats.change} this week</span></>
+                  <><TrendingDown className="w-3 h-3 text-red-500" /><span className="text-xs text-red-600">{t('dashboard.thisWeekChangeNeg', { change: healthStats.change })}</span></>
                 ) : (
-                  <><Minus className="w-3 h-3 text-slate-400" /><span className="text-xs text-slate-500">Stable</span></>
+                  <><Minus className="w-3 h-3 text-slate-400" /><span className="text-xs text-slate-500">{t('dashboard.stable')}</span></>
                 )}
               </div>
             </div>
@@ -294,7 +296,7 @@ export default function Dashboard() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
             </span>
-            <span className="text-xs font-semibold text-slate-700">Live</span>
+            <span className="text-xs font-semibold text-slate-700">{t('dashboard.live')}</span>
           </div>
         </div>
       </motion.div>
@@ -304,30 +306,30 @@ export default function Dashboard() {
         <KpiChip
           icon={Leaf}
           color="green"
-          label="Farms"
+          label={t('dashboard.farms')}
           value={String(businessMetrics.farmCount)}
-          sub="monitored"
+          sub={t('dashboard.monitored')}
         />
         <KpiChip
           icon={MapPin}
           color="blue"
-          label="Coverage"
+          label={t('dashboard.coverage')}
           value={businessMetrics.areaHa > 0 ? `${businessMetrics.areaHa} ha` : '--'}
-          sub="farm area"
+          sub={t('dashboard.farmArea')}
         />
         <KpiChip
           icon={Satellite}
           color="purple"
-          label="NDVI"
+          label={t('dashboard.ndvi')}
           value={loading ? '--' : healthStats.ndvi > 0 ? healthStats.ndvi.toFixed(2) : '--'}
-          sub="plant health"
+          sub={t('dashboard.plantHealth')}
         />
         <KpiChip
           icon={Shield}
           color="amber"
-          label="Alerts"
+          label={t('dashboard.alerts')}
           value={loading ? '--' : String(data.alerts.length)}
-          sub="total logged"
+          sub={t('dashboard.totalLogged')}
         />
       </div>
 
@@ -341,8 +343,8 @@ export default function Dashboard() {
         >
           <div className="flex items-center gap-2 mb-2">
             <Brain className="w-4 h-4 text-purple-600" />
-            <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Farm Insights</h2>
-            <span className="ml-auto text-xs text-slate-400">Based on satellite &amp; weather data</span>
+            <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">{t('dashboard.farmInsights')}</h2>
+            <span className="ml-auto text-xs text-slate-400">{t('dashboard.satelliteData')}</span>
           </div>
           {aiInsights.map((insight, i) => {
             const Icon = insight.icon;
@@ -378,7 +380,7 @@ export default function Dashboard() {
             </Link>
           </div>
           <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">
-            <ExplainedLabel term="healthScore" label="Crop Health" />
+            <ExplainedLabel term="healthScore" label={t('dashboard.cropHealth')} />
           </p>
           <div className="flex items-end gap-1 mt-1">
             <span className={`text-2xl sm:text-3xl font-bold leading-none ${healthColor}`}>
@@ -392,7 +394,7 @@ export default function Dashboard() {
             ) : healthStats.trend === 'declining' ? (
               <><TrendingDown className="w-3 h-3 text-red-500" /><span className="text-xs text-red-600">{healthStats.change}</span></>
             ) : (
-              <><Minus className="w-3 h-3 text-slate-400" /><span className="text-xs text-slate-500">Stable</span></>
+              <><Minus className="w-3 h-3 text-slate-400" /><span className="text-xs text-slate-500">{t('common.stableWeek')}</span></>
             )}
           </div>
         </motion.div>
@@ -407,7 +409,7 @@ export default function Dashboard() {
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-          <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">Alerts</p>
+          <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">{t('dashboard.alerts')}</p>
           <div className="flex items-end gap-1 mt-1">
             <span className={`text-2xl sm:text-3xl font-bold leading-none ${recentAlerts.length > 0 ? 'text-red-600' : 'text-green-600'}`}>
               {loading ? '--' : recentAlerts.length}
@@ -415,7 +417,7 @@ export default function Dashboard() {
             <span className="text-slate-400 text-xs mb-0.5">24h</span>
           </div>
           <p className="text-xs text-red-500 mt-1.5">
-            {criticalAlerts.length} critical · {data.alerts.length} total
+            {t('dashboard.criticalTotal', { critical: criticalAlerts.length, total: data.alerts.length })}
           </p>
         </motion.div>
 
@@ -430,20 +432,20 @@ export default function Dashboard() {
             </Link>
           </div>
           <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">
-            <ExplainedLabel term="diseaseRisk" label="Disease Risk" />
+            <ExplainedLabel term="diseaseRisk" label={t('dashboard.diseaseRisk')} />
           </p>
           <div className="flex items-end gap-1 mt-1">
             <span className={`text-2xl sm:text-3xl font-bold leading-none ${highRiskForecasts.diseases.length > 0 ? 'text-orange-600' : 'text-green-600'}`}>
               {loading ? '--' : highRiskForecasts.diseases.length}
             </span>
-            <span className="text-slate-400 text-xs mb-0.5">risks</span>
+            <span className="text-slate-400 text-xs mb-0.5">{t('dashboard.risks')}</span>
           </div>
           {highRiskForecasts.diseases[0] ? (
             <p className="text-xs text-orange-600 mt-1.5 truncate">
               {highRiskForecasts.diseases[0].name} {highRiskForecasts.diseases[0].risk}%
             </p>
           ) : (
-            <p className="text-xs text-green-600 mt-1.5">Low risk</p>
+            <p className="text-xs text-green-600 mt-1.5">{t('dashboard.lowRisk')}</p>
           )}
         </motion.div>
 
@@ -486,10 +488,10 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4 gap-2">
             <h2 className="section-header mb-0 flex items-center gap-2 min-w-0 truncate">
               <Flame className="w-4 h-4 text-red-500 flex-shrink-0" />
-              <span className="truncate">Recent Alerts</span>
+              <span className="truncate">{t('dashboard.recentAlerts')}</span>
             </h2>
             <Link to="/threats" className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
-              View all <ChevronRight className="w-3.5 h-3.5" />
+              {t('dashboard.viewAll')} <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
           {loading ? (
@@ -499,8 +501,8 @@ export default function Dashboard() {
           ) : data.alerts.length === 0 ? (
             <div className="text-center py-8 text-slate-500">
               <CheckCircle2 className="w-10 h-10 mx-auto mb-2 text-green-400 opacity-70" />
-              <p className="font-medium text-slate-700">Farm is secure</p>
-              <p className="text-sm">No recent threats detected</p>
+              <p className="font-medium text-slate-700">{t('dashboard.farmSecure')}</p>
+              <p className="text-sm">{t('dashboard.noThreats')}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -516,10 +518,10 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-4 gap-2">
             <h2 className="section-header mb-0 flex items-center gap-2 min-w-0 truncate">
               <Bug className="w-4 h-4 text-orange-500 flex-shrink-0" />
-              <span className="truncate">Disease Forecast</span>
+              <span className="truncate">{t('dashboard.diseaseForecast')}</span>
             </h2>
             <Link to="/weather" className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1 flex-shrink-0 whitespace-nowrap">
-              Weather <ChevronRight className="w-3.5 h-3.5" />
+              {t('dashboard.weather')} <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
           {loading ? (
@@ -529,7 +531,7 @@ export default function Dashboard() {
           ) : !data.forecast?.latest ? (
             <div className="text-center py-8 text-slate-500">
               <Bug className="w-10 h-10 mx-auto mb-2 opacity-30" />
-              <p>Forecast unavailable</p>
+              <p>{t('dashboard.forecastUnavailable')}</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -567,35 +569,35 @@ export default function Dashboard() {
       <motion.div variants={cardVariants} initial="hidden" animate="visible" className="card">
         <div className="flex items-center gap-2 mb-4">
           <Zap className="w-4 h-4 text-amber-500" />
-          <h2 className="section-header mb-0">Quick Actions</h2>
+          <h2 className="section-header mb-0">{t('dashboard.quickActions')}</h2>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Link to="/scanner" className="group flex flex-col gap-2 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors border border-green-100">
             <Bug className="w-6 h-6 text-green-600" />
             <div>
-              <p className="text-sm font-semibold text-green-800">AI Disease Scan</p>
-              <p className="text-xs text-green-600 mt-0.5">Bedrock Vision AI</p>
+              <p className="text-sm font-semibold text-green-800">{t('dashboard.aiDiseaseScan')}</p>
+              <p className="text-xs text-green-600 mt-0.5">{t('dashboard.bedrockVision')}</p>
             </div>
           </Link>
           <Link to="/irrigation" className="group flex flex-col gap-2 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors border border-blue-100">
             <Droplets className="w-6 h-6 text-blue-600" />
             <div>
-              <p className="text-sm font-semibold text-blue-800">Irrigation Plan</p>
-              <p className="text-xs text-blue-600 mt-0.5">Smart scheduling</p>
+              <p className="text-sm font-semibold text-blue-800">{t('dashboard.irrigationPlan')}</p>
+              <p className="text-xs text-blue-600 mt-0.5">{t('dashboard.smartScheduling')}</p>
             </div>
           </Link>
           <Link to="/weather" className="group flex flex-col gap-2 p-4 bg-amber-50 hover:bg-amber-100 rounded-xl transition-colors border border-amber-100">
             <Cloud className="w-6 h-6 text-amber-600" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">Weather &amp; Forecast</p>
-              <p className="text-xs text-amber-600 mt-0.5">7-day outlook</p>
+              <p className="text-sm font-semibold text-amber-800">{t('dashboard.weatherForecast')}</p>
+              <p className="text-xs text-amber-600 mt-0.5">{t('dashboard.7dayOutlook')}</p>
             </div>
           </Link>
           <Link to="/health" className="group flex flex-col gap-2 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors border border-purple-100">
             <Satellite className="w-6 h-6 text-purple-600" />
             <div>
-              <p className="text-sm font-semibold text-purple-800">Satellite View</p>
-              <p className="text-xs text-purple-600 mt-0.5">Sentinel-2 NDVI</p>
+              <p className="text-sm font-semibold text-purple-800">{t('dashboard.satelliteView')}</p>
+              <p className="text-xs text-purple-600 mt-0.5">{t('dashboard.sentinelNdvi')}</p>
             </div>
           </Link>
         </div>
@@ -611,8 +613,8 @@ export default function Dashboard() {
             <Eye className="w-5 h-5 text-red-400" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm">AI Security Monitoring</p>
-            <p className="text-xs text-slate-400 mt-0.5">Fire · Human intrusion · Animal threats — 24/7</p>
+            <p className="font-semibold text-sm">{t('dashboard.aiSecurity')}</p>
+            <p className="text-xs text-slate-400 mt-0.5">{t('dashboard.aiSecurityDesc')}</p>
           </div>
           <ChevronRight className="w-5 h-5 text-slate-500 flex-shrink-0" />
         </Link>
@@ -620,7 +622,7 @@ export default function Dashboard() {
 
       {lastRefresh && (
         <p className="text-xs text-slate-400 text-center mt-4">
-          Updated {lastRefresh.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+          {t('dashboard.updatedAt', { time: lastRefresh.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) })}
         </p>
       )}
     </div>
@@ -666,13 +668,14 @@ function KpiChip({
 }
 
 function AlertListItem({ alert }: { alert: api.Alert }) {
+  const { t } = useTranslation();
   const severityColors: Record<string, string> = {
     critical: 'bg-red-100 text-red-700',
     high: 'bg-orange-100 text-orange-700',
     medium: 'bg-yellow-100 text-yellow-700',
     low: 'bg-green-100 text-green-700',
   };
-  const timeAgo = getRelativeTime(new Date(alert.alertTimestamp));
+  const timeAgo = getRelativeTime(new Date(alert.alertTimestamp), t);
   return (
     <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors overflow-hidden">
       <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${severityColors[alert.severity] || 'bg-slate-100 text-slate-600'}`}>
@@ -689,13 +692,13 @@ function AlertListItem({ alert }: { alert: api.Alert }) {
   );
 }
 
-function getRelativeTime(date: Date): string {
+function getRelativeTime(date: Date, t: (key: string, vars?: Record<string, string | number>) => string): string {
   const diffMs = Date.now() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  return `${diffDays}d ago`;
+  if (diffMins < 1) return t('common.justNow');
+  if (diffMins < 60) return t('common.minsAgo', { mins: diffMins });
+  if (diffHours < 24) return t('common.hoursAgo', { hours: diffHours });
+  return t('common.dAgo', { days: diffDays });
 }

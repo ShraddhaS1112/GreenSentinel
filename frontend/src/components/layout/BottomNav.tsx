@@ -11,16 +11,19 @@ import {
   Settings,
 } from 'lucide-react';
 import clsx from 'clsx';
-
-const navItems = [
-  { path: '/', label: 'Home', icon: LayoutDashboard },
-  { path: '/threats', label: 'Threats', icon: AlertTriangle },
-  { path: '/health', label: 'Health', icon: Leaf },
-  { path: '/farms', label: 'Farms', icon: Building2 },
-  { path: '/settings', label: 'Settings', icon: Settings },
-];
+import { useTranslation } from '@/stores/preferencesStore';
 
 export default function BottomNav() {
+  const { t } = useTranslation();
+
+  const navItems = [
+    { path: '/', label: t('nav.home'), icon: LayoutDashboard },
+    { path: '/threats', label: t('nav.threats'), icon: AlertTriangle },
+    { path: '/health', label: t('nav.health'), icon: Leaf },
+    { path: '/farms', label: t('nav.farms'), icon: Building2 },
+    { path: '/settings', label: t('nav.settings'), icon: Settings },
+  ];
+
   return (
     <nav className="bottom-nav lg:hidden">
       <div className="flex items-center justify-around">

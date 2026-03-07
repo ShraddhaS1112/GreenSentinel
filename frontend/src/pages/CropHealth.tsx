@@ -39,7 +39,7 @@ import {
 import * as api from '@/services/apiService';
 import { ExplainedLabel } from '@/components/common/InfoTooltip';
 import { getHealthAdvice, getNdviExplanation } from '@/utils/farmerFriendly';
-import { usePreferencesStore } from '@/stores/preferencesStore';
+import { useTranslation } from '@/stores/preferencesStore';
 
 // Register Chart.js components
 ChartJS.register(
@@ -54,8 +54,8 @@ ChartJS.register(
 );
 
 export default function CropHealth() {
+  const { t, language } = useTranslation();
   const { getCurrentFarm } = useFarmStore();
-  const { language } = usePreferencesStore();
   const farm = getCurrentFarm();
 
   const [healthData, setHealthData] = useState<api.CropHealthResponse | null>(null);
@@ -121,19 +121,19 @@ export default function CropHealth() {
   // True if we have no real data at all
   const noRealData = !loading && healthData !== null && realHistory.length === 0;
 
-  // Chart data from real history only
+  // Chart data from real history
   const chartData = useMemo(() => {
-    const history = [...realHistory].reverse(); // Oldest first for chart
+    const chartHistory = [...realHistory].reverse(); // Oldest first for chart
 
     return {
-      labels: history.map((d) => {
+      labels: chartHistory.map((d) => {
         const date = new Date(d.recordDate);
         return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
       }),
       datasets: [
         {
-          label: language === 'hi' ? 'फसल स्वास्थ्य' : 'Crop Health',
-          data: history.map((d) => d.healthScore),
+          label: t('dashboard.cropHealth'),
+          data: chartHistory.map((d) => d.healthScore),
           fill: true,
           borderColor: '#16a34a',
           backgroundColor: 'rgba(22, 163, 74, 0.1)',
@@ -174,60 +174,31 @@ export default function CropHealth() {
     let trendIcon = '';
     let actionAdvice = '';
 
-    if (language === 'hi') {
-      if (weeklyChange > 5) {
-        trendMessage = 'फसल में सुधार हो रहा है';
-        trendColor = 'text-green-700 bg-green-50 border-green-200';
-        trendIcon = '📈';
-        actionAdvice = 'बहुत अच्छा! जो कर रहे हैं वो जारी रखें।';
-      } else if (weeklyChange < -5) {
-        trendMessage = 'फसल की हालत बिगड़ रही है';
-        trendColor = 'text-red-700 bg-red-50 border-red-200';
-        trendIcon = '📉';
-        actionAdvice = 'ध्यान दें! पानी, कीट या बीमारी की जांच करें।';
-      } else if (shortTermChange > 3) {
-        trendMessage = 'पिछले 2 दिनों में थोड़ा सुधार';
-        trendColor = 'text-green-600 bg-green-50 border-green-200';
-        trendIcon = '↗️';
-        actionAdvice = 'अच्छी प्रगति। देखभाल जारी रखें।';
-      } else if (shortTermChange < -3) {
-        trendMessage = 'पिछले 2 दिनों में थोड़ी गिरावट';
-        trendColor = 'text-orange-700 bg-orange-50 border-orange-200';
-        trendIcon = '↘️';
-        actionAdvice = 'फसल की जांच करें - पानी या कीट की समस्या हो सकती है।';
-      } else {
-        trendMessage = 'फसल स्थिर है';
-        trendColor = 'text-blue-700 bg-blue-50 border-blue-200';
-        trendIcon = '➡️';
-        actionAdvice = 'सब ठीक है। नियमित देखभाल जारी रखें।';
-      }
+    if (weeklyChange > 5) {
+      trendMessage = t('health.trendImproving');
+      trendColor = 'text-green-700 bg-green-50 border-green-200';
+      trendIcon = '📈';
+      actionAdvice = t('health.adviceImproving');
+    } else if (weeklyChange < -5) {
+      trendMessage = t('health.trendDeclining');
+      trendColor = 'text-red-700 bg-red-50 border-red-200';
+      trendIcon = '📉';
+      actionAdvice = t('health.adviceDeclining');
+    } else if (shortTermChange > 3) {
+      trendMessage = t('health.trendSlightUp');
+      trendColor = 'text-green-600 bg-green-50 border-green-200';
+      trendIcon = '↗️';
+      actionAdvice = t('health.adviceSlightUp');
+    } else if (shortTermChange < -3) {
+      trendMessage = t('health.trendSlightDown');
+      trendColor = 'text-orange-700 bg-orange-50 border-orange-200';
+      trendIcon = '↘️';
+      actionAdvice = t('health.adviceSlightDown');
     } else {
-      if (weeklyChange > 5) {
-        trendMessage = 'Crops are improving';
-        trendColor = 'text-green-700 bg-green-50 border-green-200';
-        trendIcon = '📈';
-        actionAdvice = 'Great progress! Keep doing what you\'re doing.';
-      } else if (weeklyChange < -5) {
-        trendMessage = 'Crops are declining';
-        trendColor = 'text-red-700 bg-red-50 border-red-200';
-        trendIcon = '📉';
-        actionAdvice = 'Attention needed! Check water, pests, or disease.';
-      } else if (shortTermChange > 3) {
-        trendMessage = 'Slight improvement in last 2 days';
-        trendColor = 'text-green-600 bg-green-50 border-green-200';
-        trendIcon = '↗️';
-        actionAdvice = 'Good progress. Continue current care.';
-      } else if (shortTermChange < -3) {
-        trendMessage = 'Slight decline in last 2 days';
-        trendColor = 'text-orange-700 bg-orange-50 border-orange-200';
-        trendIcon = '↘️';
-        actionAdvice = 'Check your crops - may need water or pest treatment.';
-      } else {
-        trendMessage = 'Crops are stable';
-        trendColor = 'text-blue-700 bg-blue-50 border-blue-200';
-        trendIcon = '➡️';
-        actionAdvice = 'Everything normal. Continue regular care.';
-      }
+      trendMessage = t('health.trendStable');
+      trendColor = 'text-blue-700 bg-blue-50 border-blue-200';
+      trendIcon = '➡️';
+      actionAdvice = t('health.adviceStable');
     }
 
     return {
@@ -244,7 +215,7 @@ export default function CropHealth() {
       prevDate,
       oldDate,
     };
-  }, [healthData, language]);
+  }, [healthData, t]);
 
   const chartOptions = {
     responsive: true,
@@ -284,10 +255,10 @@ export default function CropHealth() {
   };
 
   const getScoreCategory = (score: number) => {
-    if (score >= 80) return { label: 'Excellent', color: 'bg-green-100 text-green-700' };
-    if (score >= 60) return { label: 'Good', color: 'bg-lime-100 text-lime-700' };
-    if (score >= 40) return { label: 'Moderate', color: 'bg-yellow-100 text-yellow-700' };
-    return { label: 'Poor', color: 'bg-red-100 text-red-700' };
+    if (score >= 80) return { key: 'health.excellent', color: 'bg-green-100 text-green-700' };
+    if (score >= 60) return { key: 'health.good', color: 'bg-lime-100 text-lime-700' };
+    if (score >= 40) return { key: 'health.moderate', color: 'bg-yellow-100 text-yellow-700' };
+    return { key: 'health.poor', color: 'bg-red-100 text-red-700' };
   };
 
   const category = getScoreCategory(currentScore);
@@ -302,9 +273,9 @@ export default function CropHealth() {
       <div className="page-container">
         <div className="empty-state">
           <Leaf className="empty-state-icon" />
-          <h2 className="empty-state-title">No Farm Selected</h2>
+          <h2 className="empty-state-title">{t('dashboard.noFarm')}</h2>
           <p className="empty-state-description">
-            Please select a farm to view crop health data.
+            {t('dashboard.selectFarm')}
           </p>
         </div>
       </div>
@@ -316,7 +287,7 @@ export default function CropHealth() {
       {/* Header */}
       <div className="mb-6 flex justify-between items-start">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Crop Health</h1>
+          <h1 className="text-2xl font-bold text-slate-900">{t('health.title')}</h1>
           <p className="text-slate-500 mt-1 flex items-center gap-1">
             <MapPin className="w-4 h-4" />
             {farm.name} • {farm.cropType}
@@ -328,7 +299,7 @@ export default function CropHealth() {
           className="btn-secondary flex items-center gap-2"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
+          {t('health.refresh')}
         </button>
       </div>
 
@@ -338,7 +309,7 @@ export default function CropHealth() {
           <div className="flex gap-3">
             <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
             <div>
-              <h3 className="font-medium text-red-900">Error loading data</h3>
+              <h3 className="font-medium text-red-900">{t('health.error')}</h3>
               <p className="text-sm text-red-700">{error}</p>
             </div>
           </div>
@@ -349,7 +320,7 @@ export default function CropHealth() {
       {loading && !healthData && (
         <div className="card mb-6 flex items-center justify-center py-12">
           <RefreshCw className="w-8 h-8 animate-spin text-green-600" />
-          <span className="ml-3 text-slate-600">Loading satellite data...</span>
+          <span className="ml-3 text-slate-600">{t('health.loading')}</span>
         </div>
       )}
 
@@ -359,9 +330,9 @@ export default function CropHealth() {
           <div className="flex gap-3">
             <Satellite className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="font-medium text-amber-900">Awaiting Real Satellite Data</h3>
+              <h3 className="font-medium text-amber-900">{t('health.awaitingData')}</h3>
               <p className="text-sm text-amber-700 mt-1">
-                No verified Sentinel-2 capture is available for your farm yet. Real data arrives every ~5 days when cloud cover is below 30%. Check back after the next satellite pass.
+                {t('health.awaitingDataDesc')}
               </p>
             </div>
           </div>
@@ -378,14 +349,14 @@ export default function CropHealth() {
           <div className="flex items-center gap-4">
             {/* Score info */}
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-slate-500 mb-1">Current Health Score</p>
+              <p className="text-xs text-slate-500 mb-1">{t('health.currentScore')}</p>
               <div className="flex items-baseline gap-2 flex-wrap">
                 <span className={`text-4xl font-bold leading-none ${getScoreColor(currentScore)}`}>
                   {currentScore}
                 </span>
                 <span className="text-slate-400 text-sm">/100</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${category.color}`}>
-                  {category.label}
+                  {t(category.key)}
                 </span>
               </div>
 
@@ -393,17 +364,17 @@ export default function CropHealth() {
                 {trend === 'improving' || scoreChange > 3 ? (
                   <>
                     <TrendingUp className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-green-600 text-sm font-medium">+{Math.abs(scoreChange)} pts this week</span>
+                    <span className="text-green-600 text-sm font-medium">{t('health.ptsChangePos', { pts: Math.abs(scoreChange) })}</span>
                   </>
                 ) : trend === 'declining' || scoreChange < -3 ? (
                   <>
                     <TrendingDown className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <span className="text-red-600 text-sm font-medium">{scoreChange} pts this week</span>
+                    <span className="text-red-600 text-sm font-medium">{t('health.ptsChangeNeg', { pts: scoreChange })}</span>
                   </>
                 ) : (
                   <>
                     <Minus className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                    <span className="text-slate-500 text-sm font-medium">Stable this week</span>
+                    <span className="text-slate-500 text-sm font-medium">{t('health.stableWeek')}</span>
                   </>
                 )}
               </div>
@@ -412,7 +383,7 @@ export default function CropHealth() {
               <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
                 <span>NDVI <span className="font-semibold text-slate-700">{currentNdvi.toFixed(3)}</span></span>
                 {healthData?.averageNdvi && (
-                  <span>30d avg <span className="font-semibold text-slate-700">{healthData.averageNdvi.toFixed(3)}</span></span>
+                  <span>{t('health.avgNdvi', { days: 30 })} <span className="font-semibold text-slate-700">{healthData.averageNdvi.toFixed(3)}</span></span>
                 )}
               </div>
             </div>
@@ -470,13 +441,13 @@ export default function CropHealth() {
               {/* Change indicators */}
               <div className="mt-3 flex gap-4 text-sm">
                 <span>
-                  {language === 'hi' ? 'कुल बदलाव:' : 'Overall:'}{' '}
+                  {t('health.overallChange')}{' '}
                   <strong className={trendInterpretation.weeklyChange >= 0 ? 'text-green-700' : 'text-red-700'}>
                     {trendInterpretation.weeklyChange >= 0 ? '+' : ''}{trendInterpretation.weeklyChange}
                   </strong>
                 </span>
                 <span>
-                  {language === 'hi' ? 'पिछले से:' : 'From prev:'}{' '}
+                  {t('health.fromPrev')}{' '}
                   <strong className={trendInterpretation.shortTermChange >= 0 ? 'text-green-700' : 'text-red-700'}>
                     {trendInterpretation.shortTermChange >= 0 ? '+' : ''}{trendInterpretation.shortTermChange}
                   </strong>
@@ -497,16 +468,16 @@ export default function CropHealth() {
         const daysUntil = Math.round((nextPass.getTime() - today.getTime()) / 86400000);
         const nextPassLabel = nextPass.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
         const passNote = daysUntil > 0
-          ? `Next pass expected around ${nextPassLabel} (${daysUntil}d).`
-          : `Pass was due ${nextPassLabel} — likely delayed by cloud cover.`;
+          ? t('health.nextPassExpected', { date: nextPassLabel, days: daysUntil })
+          : t('health.passDue', { date: nextPassLabel });
         return (
           <div className="card mb-6 bg-slate-50 border border-slate-200">
             <div className="flex gap-3 items-start">
               <Calendar className="w-5 h-5 text-slate-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-slate-700">Only 1 satellite capture so far</p>
+                <p className="text-sm font-medium text-slate-700">{t('health.oneCapture')}</p>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  A trend chart needs at least 2 data points. {passNote}
+                  {t('health.oneCaptureDesc')} {passNote}
                 </p>
               </div>
             </div>
@@ -525,15 +496,13 @@ export default function CropHealth() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="section-header mb-0 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-slate-400" />
-              {language === 'hi' ? `${realHistory.length} रिकॉर्ड का रुझान` : `${realHistory.length}-Record Trend`}
+              {t('health.recordTrend', { count: realHistory.length })}
             </h2>
           </div>
 
           {/* Chart explanation */}
           <p className="text-sm text-slate-500 mb-4">
-            {language === 'hi'
-              ? '📊 यह चार्ट दिखाता है कि आपकी फसल का स्वास्थ्य समय के साथ कैसे बदल रहा है। ऊपर जाना = अच्छा, नीचे जाना = ध्यान दें।'
-              : '📊 This chart shows how your crop health changed over time. Going up = good, going down = needs attention.'}
+            {t('health.chartExplain')}
           </p>
 
           <div className="chart-container">
@@ -544,9 +513,7 @@ export default function CropHealth() {
           <div className="mt-4 p-3 bg-slate-50 rounded-lg text-sm text-slate-600">
             <p className="flex items-center gap-2">
               <span className="w-4 h-1 bg-green-500 rounded"></span>
-              {language === 'hi'
-                ? 'हरी रेखा = फसल का स्वास्थ्य स्कोर (0-100)। 60 से ऊपर अच्छा है।'
-                : 'Green line = Crop health score (0-100). Above 60 is good.'}
+              {t('health.chartLegend')}
             </p>
           </div>
         </motion.div>
@@ -562,12 +529,12 @@ export default function CropHealth() {
         >
           <h2 className="section-header flex items-center gap-2">
             <Satellite className="w-5 h-5 text-slate-400" />
-            Latest Satellite Data
+            {t('health.latestData')}
           </h2>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="p-3 bg-slate-50 rounded-lg">
-              <p className="text-xs text-slate-500">Capture Date</p>
+              <p className="text-xs text-slate-500">{t('health.captureDate')}</p>
               <p className="font-semibold text-slate-700">
                 {new Date(latestSatellite.captureDate).toLocaleDateString('en-IN', {
                   day: 'numeric',
@@ -590,7 +557,7 @@ export default function CropHealth() {
               <p className="font-semibold text-blue-600">{latestSatellite.ndwi.toFixed(3)}</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg">
-              <p className="text-xs text-slate-500">Cloud Cover</p>
+              <p className="text-xs text-slate-500">{t('health.cloudCover')}</p>
               <p className="font-semibold text-slate-700">{latestSatellite.cloudCover}%</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg">
@@ -600,7 +567,7 @@ export default function CropHealth() {
               <p className="font-semibold text-slate-700">{latestSatellite.lai.toFixed(2)}</p>
             </div>
             <div className="p-3 bg-slate-50 rounded-lg">
-              <p className="text-xs text-slate-500">Data Source</p>
+              <p className="text-xs text-slate-500">{t('health.dataSource')}</p>
               <p className="font-semibold text-slate-700 capitalize">
                 {latestSatellite.source && latestSatellite.source.toLowerCase() !== 'simulated'
                   ? latestSatellite.source
@@ -632,13 +599,13 @@ export default function CropHealth() {
         >
           <h2 className="section-header flex items-center gap-2">
             <Map className="w-5 h-5 text-slate-400" />
-            Satellite View of Your Farm
+            {t('health.satelliteView')}
           </h2>
           <Suspense
             fallback={
               <div className="h-[400px] bg-slate-100 rounded-lg flex items-center justify-center">
                 <RefreshCw className="w-6 h-6 animate-spin text-slate-400" />
-                <span className="ml-2 text-slate-500">Loading map...</span>
+                <span className="ml-2 text-slate-500">{t('health.loadingMap')}</span>
               </div>
             }
           >
@@ -652,8 +619,7 @@ export default function CropHealth() {
             />
           </Suspense>
           <p className="text-xs text-slate-500 mt-3 text-center">
-            Use layer buttons to switch between satellite, terrain, and street views.
-            Click "NDVI View" for detailed vegetation analysis.
+            {t('health.mapHint')}
           </p>
         </motion.div>
       )}
@@ -668,7 +634,7 @@ export default function CropHealth() {
         >
           <h2 className="section-header flex items-center gap-2">
             <Leaf className="w-5 h-5 text-slate-400" />
-            Recommendations
+            {t('health.recommendations')}
           </h2>
           <ul className="space-y-2">
             {currentHealth.recommendations.map((rec, idx) => (
@@ -691,40 +657,40 @@ export default function CropHealth() {
         <div className="flex gap-3">
           <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
-            <h3 className="font-medium text-blue-900">How Health Score is Calculated</h3>
+            <h3 className="font-medium text-blue-900">{t('health.howCalculated')}</h3>
             <p className="text-sm text-blue-700 mt-1">
-              Derived from Sentinel-2 satellite imagery (ESA Copernicus programme) processed daily at 6 AM IST.
+              {t('health.derivedFrom')}
             </p>
 
             {/* NDVI Formula */}
             <div className="mt-3 p-3 bg-white rounded-lg border border-blue-100">
-              <p className="text-xs font-semibold text-slate-700 mb-1">NDVI Formula</p>
+              <p className="text-xs font-semibold text-slate-700 mb-1">{t('health.ndviFormulaLabel')}</p>
               <p className="font-mono text-sm text-blue-800 font-bold">NDVI = (NIR − Red) / (NIR + Red)</p>
               <p className="text-xs text-slate-500 mt-1">
-                NIR = Band 8 (842nm) · Red = Band 4 (665nm) · Range: −1.0 to +1.0
+                {t('health.formulaBands')}
               </p>
             </div>
 
             {/* Score bands */}
             <div className="mt-3 grid grid-cols-1 gap-1">
-              <p className="text-xs font-semibold text-slate-700 mb-1">Score Bands</p>
+              <p className="text-xs font-semibold text-slate-700 mb-1">{t('health.scoreBandsLabel')}</p>
               {[
-                { range: 'NDVI ≥ 0.60', label: 'Excellent', score: '95', color: 'text-green-700 bg-green-50' },
-                { range: 'NDVI ≥ 0.45', label: 'Good',      score: '80', color: 'text-lime-700 bg-lime-50' },
-                { range: 'NDVI ≥ 0.30', label: 'Moderate',  score: '60', color: 'text-yellow-700 bg-yellow-50' },
-                { range: 'NDVI ≥ 0.15', label: 'Stressed',  score: '40', color: 'text-orange-700 bg-orange-50' },
-                { range: 'NDVI < 0.15', label: 'Poor',      score: '20', color: 'text-red-700 bg-red-50' },
+                { range: 'NDVI ≥ 0.60', key: 'health.excellent', score: '95', color: 'text-green-700 bg-green-50' },
+                { range: 'NDVI ≥ 0.45', key: 'health.good',      score: '80', color: 'text-lime-700 bg-lime-50' },
+                { range: 'NDVI ≥ 0.30', key: 'health.moderate',  score: '60', color: 'text-yellow-700 bg-yellow-50' },
+                { range: 'NDVI ≥ 0.15', key: 'health.stressed',  score: '40', color: 'text-orange-700 bg-orange-50' },
+                { range: 'NDVI < 0.15', key: 'health.poor',      score: '20', color: 'text-red-700 bg-red-50' },
               ].map(row => (
-                <div key={row.label} className={`flex items-center justify-between px-2.5 py-1.5 rounded text-xs ${row.color}`}>
+                <div key={row.key} className={`flex items-center justify-between px-2.5 py-1.5 rounded text-xs ${row.color}`}>
                   <span className="font-mono">{row.range}</span>
-                  <span className="font-medium">{row.label} · Score {row.score}</span>
+                  <span className="font-medium">{t(row.key)} · {t('common.score')} {row.score}</span>
                 </div>
               ))}
             </div>
 
             {lastRefresh && (
               <p className="text-xs text-blue-600 mt-3">
-                Data updated: {lastRefresh.toLocaleString('en-IN')}
+                {t('health.dataUpdated', { time: lastRefresh.toLocaleString('en-IN') })}
               </p>
             )}
           </div>
