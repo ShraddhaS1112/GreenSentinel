@@ -21,25 +21,25 @@
       "id": "cam1",
       "name": "North Gate",
       "type": "file",
-      "path": "C:\\Users\\z0043h7f\\Documents\\personal\\Sudhindra\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\north-gate.mp4"
+      "path": "C:\\Users\\Documents\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\north-gate.mp4"
     },
     {
       "id": "cam2",
       "name": "South Field",
       "type": "file",
-      "path": "C:\\Users\\z0043h7f\\Documents\\personal\\Sudhindra\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\south-field.mp4"
+      "path": "C:\\Users\\Documents\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\south-field.mp4"
     },
     {
       "id": "cam3",
       "name": "Farm Overview",
       "type": "file",
-      "path": "C:\\Users\\z0043h7f\\Documents\\personal\\Sudhindra\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\farm-overview.mp4"
+      "path": "C:\\Users\\Documents\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\farm-overview.mp4"
     },
     {
       "id": "cam4",
       "name": "Farm Entry",
       "type": "file",
-      "path": "C:\\Users\\z0043h7f\\Documents\\personal\\Sudhindra\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\farm-entry.mp4"
+      "path": "C:\\Users\\Documents\\AI Bharat\\GreenSentinel\\frontend\\public\\cameras\\farm-entry.mp4"
     }
   ]
 }

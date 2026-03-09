@@ -5,7 +5,7 @@
       "Bash(npm run build:*)",
       "Bash(npx tsc:*)",
       "Bash(netstat:*)",
-      "Read(//c/Users/z0043h7f/Documents/personal/Sudhindra/AI Bharat/GreenSentinel/**)",
+      "Read(//c/Users/Documents/AI Bharat/GreenSentinel/**)",
       "Bash(xargs:*)",
       "Bash(npm run typecheck:*)"
     ]
