@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -139,5 +140,37 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['leaflet', 'react-leaflet', '@react-leaflet/core'],
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      reportsDirectory: './coverage',
+      include: [
+        'src/stores/**/*.ts',
+        'src/services/apiService.ts',
+        'src/utils/**/*.ts',
+        'src/hooks/**/*.ts',
+        'src/components/common/**/*.tsx',
+      ],
+      exclude: [
+        'node_modules/',
+        'src/test/',
+        '**/*.d.ts',
+        '**/*.config.*',
+        '**/main.tsx',
+        '**/App.tsx',
+      ],
+      thresholds: {
+        lines: 80,
+        functions: 60,
+        branches: 70,
+        statements: 80,
+      },
+    },
   },
 });
