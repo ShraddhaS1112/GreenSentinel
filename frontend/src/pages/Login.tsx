@@ -5,13 +5,21 @@
  * Uses AWS Cognito when configured, falls back to demo mode.
  */
 
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Shield, Phone, Lock, ArrowRight, Loader2, ArrowLeft, FlaskConical } from 'lucide-react';
-import { useAuthStore } from '@/stores/authStore';
-import toast from 'react-hot-toast';
-import { useTranslation } from '@/stores/preferencesStore';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  Shield,
+  Phone,
+  Lock,
+  ArrowRight,
+  Loader2,
+  ArrowLeft,
+  FlaskConical,
+} from "lucide-react";
+import { useAuthStore } from "@/stores/authStore";
+import toast from "react-hot-toast";
+import { useTranslation } from "@/stores/preferencesStore";
 
 export default function Login() {
   const { t } = useTranslation();
@@ -28,13 +36,13 @@ export default function Login() {
     instantDemoLogin,
   } = useAuthStore();
 
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otp, setOtp] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      navigate("/");
     }
   }, [isAuthenticated, navigate]);
 
@@ -48,15 +56,15 @@ export default function Login() {
     clearError();
 
     // Validate phone number (Indian mobile)
-    const cleaned = phoneNumber.replace(/\D/g, '');
+    const cleaned = phoneNumber.replace(/\D/g, "");
     if (cleaned.length !== 10 || !/^[6-9]/.test(cleaned)) {
-      toast.error(t('login.invalidPhone'));
+      toast.error(t("login.invalidPhone"));
       return;
     }
 
     const success = await sendOtp(phoneNumber);
     if (success) {
-      toast.success(t('login.otpSent'));
+      toast.success(t("login.otpSent"));
     }
   };
 
@@ -65,20 +73,20 @@ export default function Login() {
     clearError();
 
     if (otp.length !== 6) {
-      toast.error(t('login.invalidOtp'));
+      toast.error(t("login.invalidOtp"));
       return;
     }
 
     const success = await verifyOtp(otp);
     if (success) {
-      toast.success(t('login.welcome'));
-      navigate('/');
+      toast.success(t("login.welcome"));
+      navigate("/");
     }
   };
 
   const handleChangePhone = () => {
-    setOtp('');
-    useAuthStore.setState({ signInStep: 'PHONE', error: null });
+    setOtp("");
+    useAuthStore.setState({ signInStep: "PHONE", error: null });
   };
 
   return (
@@ -94,21 +102,21 @@ export default function Login() {
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">Green Sentinel</h1>
-          <p className="text-primary-200 mt-2">
-            {t('login.tagline')}
-          </p>
+          <p className="text-primary-200 mt-2">{t("login.tagline")}</p>
         </div>
 
         {/* Login card */}
         <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
           <h2 className="text-xl font-semibold text-slate-900 mb-6">
-            {signInStep === 'PHONE' ? t('login.welcomeBack') : t('login.enterOtp')}
+            {signInStep === "PHONE"
+              ? t("login.welcomeBack")
+              : t("login.enterOtp")}
           </h2>
 
-          {signInStep === 'PHONE' ? (
+          {signInStep === "PHONE" ? (
             <form onSubmit={handlePhoneSubmit}>
               <div className="mb-4">
-                <label className="label">{t('login.mobileNumber')}</label>
+                <label className="label">{t("login.mobileNumber")}</label>
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-slate-500">
                     <Phone className="w-4 h-4" />
@@ -117,8 +125,12 @@ export default function Login() {
                   <input
                     type="tel"
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    placeholder="9876543210"
+                    onChange={(e) =>
+                      setPhoneNumber(
+                        e.target.value.replace(/\D/g, "").slice(0, 10),
+                      )
+                    }
+                    placeholder="9970187593"
                     className="input pl-20"
                     autoComplete="tel"
                     inputMode="numeric"
@@ -127,7 +139,7 @@ export default function Login() {
                   />
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  {t('login.smsNote')}
+                  {t("login.smsNote")}
                 </p>
               </div>
 
@@ -140,7 +152,7 @@ export default function Login() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    {t('login.getOtp')}
+                    {t("login.getOtp")}
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -149,13 +161,15 @@ export default function Login() {
           ) : (
             <form onSubmit={handleOtpSubmit}>
               <div className="mb-4">
-                <label className="label">{t('login.verificationCode')}</label>
+                <label className="label">{t("login.verificationCode")}</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
                     type="text"
                     value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onChange={(e) =>
+                      setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    }
                     placeholder="123456"
                     className="input pl-10 text-center text-2xl tracking-widest"
                     autoComplete="one-time-code"
@@ -179,7 +193,7 @@ export default function Login() {
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    {t('login.verifyLogin')}
+                    {t("login.verifyLogin")}
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -191,7 +205,7 @@ export default function Login() {
                 className="btn-ghost w-full text-slate-600"
               >
                 <ArrowLeft className="w-4 h-4" />
-                {t('login.changePhone')}
+                {t("login.changePhone")}
               </button>
             </form>
           )}
@@ -208,25 +222,28 @@ export default function Login() {
           <button
             onClick={() => {
               instantDemoLogin();
-              navigate('/');
+              navigate("/");
             }}
             className="w-full flex items-center justify-center gap-2 p-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-white transition-colors"
           >
             <FlaskConical className="w-4 h-4" />
-            <span className="text-sm font-medium">Judge Demo — SK Farms (No login required)</span>
+            <span className="text-sm font-medium">
+              Judge Demo — SK Farms (No login required)
+            </span>
           </button>
         </div>
 
         {/* Footer */}
         <p className="text-center text-primary-200 text-sm mt-4">
-          {t('login.terms')}
+          {t("login.terms")}
         </p>
 
         {/* Demo hint - only show when Cognito not configured */}
         {!cognitoConfigured && (
           <div className="mt-4 p-3 bg-white/10 rounded-lg text-center">
             <p className="text-white/80 text-sm">
-              <strong>Demo Mode:</strong> Enter any 10-digit number and any 6-digit OTP
+              <strong>Demo Mode:</strong> Enter any 10-digit number and any
+              6-digit OTP
             </p>
           </div>
         )}

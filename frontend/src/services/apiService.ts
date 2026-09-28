@@ -4,7 +4,9 @@
  * Connects frontend to AWS API Gateway backend
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://4uogxqomb0.execute-api.ap-south-1.amazonaws.com/dev';
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "https://4uogxqomb0.execute-api.ap-south-1.amazonaws.com/dev";
 
 // Types
 export interface Farm {
@@ -19,11 +21,11 @@ export interface Farm {
     state?: string;
   };
   totalArea: number;
-  areaUnit: 'hectares' | 'acres';
+  areaUnit: "hectares" | "acres";
   crops: string[];
   soilType?: string;
   irrigationType?: string;
-  notificationPhone?: string; // WhatsApp number for alerts (e.g., "whatsapp:+919876543210")
+  notificationPhone?: string; // WhatsApp number for alerts (e.g., "whatsapp:+919970187593")
   createdAt: string;
   updatedAt?: string;
 }
@@ -32,8 +34,8 @@ export interface Alert {
   farmId: string;
   alertTimestamp: string;
   alertId: string;
-  alertType: 'disease' | 'pest' | 'weather' | 'irrigation' | 'satellite';
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  alertType: "disease" | "pest" | "weather" | "irrigation" | "satellite";
+  severity: "low" | "medium" | "high" | "critical";
   title: string;
   description: string;
   advisory: string;
@@ -50,14 +52,14 @@ export interface ApiResponse<T> {
 // Helper function for API calls
 async function apiCall<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<ApiResponse<T>> {
   try {
     const url = `${API_BASE_URL}${endpoint}`;
     const response = await fetch(url, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options.headers,
       },
     });
@@ -78,10 +80,10 @@ async function apiCall<T>(
       status: response.status,
     };
   } catch (error) {
-    console.error('API call failed:', error);
+    console.error("API call failed:", error);
     return {
       data: null,
-      error: error instanceof Error ? error.message : 'Network error',
+      error: error instanceof Error ? error.message : "Network error",
       status: 0,
     };
   }
@@ -95,27 +97,39 @@ export async function getFarms(userId: string): Promise<ApiResponse<Farm[]>> {
   return apiCall<Farm[]>(`/farms?userId=${encodeURIComponent(userId)}`);
 }
 
-export async function getFarm(farmId: string, userId: string): Promise<ApiResponse<Farm>> {
-  return apiCall<Farm>(`/farms/${encodeURIComponent(farmId)}?userId=${encodeURIComponent(userId)}`);
+export async function getFarm(
+  farmId: string,
+  userId: string,
+): Promise<ApiResponse<Farm>> {
+  return apiCall<Farm>(
+    `/farms/${encodeURIComponent(farmId)}?userId=${encodeURIComponent(userId)}`,
+  );
 }
 
-export async function createFarm(farm: Omit<Farm, 'createdAt' | 'updatedAt'>): Promise<ApiResponse<{ success: boolean }>> {
-  return apiCall<{ success: boolean }>('/farms', {
-    method: 'POST',
+export async function createFarm(
+  farm: Omit<Farm, "createdAt" | "updatedAt">,
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiCall<{ success: boolean }>("/farms", {
+    method: "POST",
     body: JSON.stringify(farm),
   });
 }
 
-export async function updateFarm(farmId: string, updates: Partial<Farm>): Promise<ApiResponse<{ success: boolean }>> {
+export async function updateFarm(
+  farmId: string,
+  updates: Partial<Farm>,
+): Promise<ApiResponse<{ success: boolean }>> {
   return apiCall<{ success: boolean }>(`/farms/${encodeURIComponent(farmId)}`, {
-    method: 'PUT',
+    method: "PUT",
     body: JSON.stringify(updates),
   });
 }
 
-export async function deleteFarm(farmId: string): Promise<ApiResponse<{ success: boolean }>> {
+export async function deleteFarm(
+  farmId: string,
+): Promise<ApiResponse<{ success: boolean }>> {
   return apiCall<{ success: boolean }>(`/farms/${encodeURIComponent(farmId)}`, {
-    method: 'DELETE',
+    method: "DELETE",
   });
 }
 
@@ -127,9 +141,11 @@ export async function getAlerts(farmId: string): Promise<ApiResponse<Alert[]>> {
   return apiCall<Alert[]>(`/alerts?farmId=${encodeURIComponent(farmId)}`);
 }
 
-export async function createAlert(alert: Omit<Alert, 'alertTimestamp'>): Promise<ApiResponse<{ success: boolean }>> {
-  return apiCall<{ success: boolean }>('/alerts', {
-    method: 'POST',
+export async function createAlert(
+  alert: Omit<Alert, "alertTimestamp">,
+): Promise<ApiResponse<{ success: boolean }>> {
+  return apiCall<{ success: boolean }>("/alerts", {
+    method: "POST",
     body: JSON.stringify({
       ...alert,
       alertTimestamp: new Date().toISOString(),
@@ -141,8 +157,10 @@ export async function createAlert(alert: Omit<Alert, 'alertTimestamp'>): Promise
 // Health Check
 // ============================================================================
 
-export async function healthCheck(): Promise<ApiResponse<{ status: string; stage: string }>> {
-  return apiCall<{ status: string; stage: string }>('/health');
+export async function healthCheck(): Promise<
+  ApiResponse<{ status: string; stage: string }>
+> {
+  return apiCall<{ status: string; stage: string }>("/health");
 }
 
 // ============================================================================
@@ -154,13 +172,13 @@ export async function triggerAlert(
   userId: string,
   alert: {
     alertType: string;
-    severity: 'low' | 'medium' | 'high' | 'critical';
+    severity: "low" | "medium" | "high" | "critical";
     title: string;
     description: string;
-  }
+  },
 ): Promise<ApiResponse<{ success: boolean }>> {
-  return apiCall<{ success: boolean }>('/alerts/trigger', {
-    method: 'POST',
+  return apiCall<{ success: boolean }>("/alerts/trigger", {
+    method: "POST",
     body: JSON.stringify({
       farmId,
       userId,
@@ -180,7 +198,7 @@ export interface SatelliteData {
   ndwi: number;
   lai: number;
   cloudCover: number;
-  healthStatus: 'excellent' | 'good' | 'moderate' | 'stressed' | 'poor';
+  healthStatus: "excellent" | "good" | "moderate" | "stressed" | "poor";
   healthScore: number;
   source: string;
   processedAt: string;
@@ -196,10 +214,10 @@ export interface SatelliteDataResponse {
 
 export async function getSatelliteData(
   farmId: string,
-  days: number = 30
+  days: number = 30,
 ): Promise<ApiResponse<SatelliteDataResponse>> {
   return apiCall<SatelliteDataResponse>(
-    `/satellite?farmId=${encodeURIComponent(farmId)}&days=${days}`
+    `/satellite?farmId=${encodeURIComponent(farmId)}&days=${days}`,
   );
 }
 
@@ -213,7 +231,7 @@ export interface CropHealthRecord {
   ndvi: number;
   healthScore: number;
   healthStatus: string;
-  trend: 'improving' | 'stable' | 'declining';
+  trend: "improving" | "stable" | "declining";
   recommendations: string[];
   source?: string;
 }
@@ -222,7 +240,7 @@ export interface CropHealthResponse {
   farmId: string;
   dateRange: { start: string; end: string };
   current: CropHealthRecord | null;
-  trend: 'improving' | 'stable' | 'declining';
+  trend: "improving" | "stable" | "declining";
   averageNdvi: number | null;
   history: CropHealthRecord[];
   count: number;
@@ -230,10 +248,10 @@ export interface CropHealthResponse {
 
 export async function getCropHealth(
   farmId: string,
-  days: number = 30
+  days: number = 30,
 ): Promise<ApiResponse<CropHealthResponse>> {
   return apiCall<CropHealthResponse>(
-    `/crop-health?farmId=${encodeURIComponent(farmId)}&days=${days}`
+    `/crop-health?farmId=${encodeURIComponent(farmId)}&days=${days}`,
   );
 }
 
@@ -245,7 +263,7 @@ export interface DiseaseRisk {
   disease: string;
   name: string;
   risk: number;
-  severity: 'low' | 'medium' | 'high';
+  severity: "low" | "medium" | "high";
   affectedCrops: string[];
 }
 
@@ -253,7 +271,7 @@ export interface PestRisk {
   pest: string;
   name: string;
   risk: number;
-  severity: 'low' | 'medium' | 'high';
+  severity: "low" | "medium" | "high";
   affectedCrops: string[];
 }
 
@@ -281,10 +299,10 @@ export interface ForecastResponse {
 }
 
 export async function getForecast(
-  farmId: string
+  farmId: string,
 ): Promise<ApiResponse<ForecastResponse>> {
   return apiCall<ForecastResponse>(
-    `/forecast?farmId=${encodeURIComponent(farmId)}`
+    `/forecast?farmId=${encodeURIComponent(farmId)}`,
   );
 }
 
@@ -292,7 +310,7 @@ export async function getForecast(
 // Offline Support - Cache API responses
 // ============================================================================
 
-const CACHE_PREFIX = 'gs_api_cache_';
+const CACHE_PREFIX = "gs_api_cache_";
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export function getCachedData<T>(key: string): T | null {
@@ -316,7 +334,7 @@ export function setCachedData<T>(key: string, data: T): void {
   try {
     localStorage.setItem(
       `${CACHE_PREFIX}${key}`,
-      JSON.stringify({ data, timestamp: Date.now() })
+      JSON.stringify({ data, timestamp: Date.now() }),
     );
   } catch {
     // Storage full or unavailable
@@ -326,7 +344,7 @@ export function setCachedData<T>(key: string, data: T): void {
 // Fetch with cache fallback (for offline support)
 export async function fetchWithCache<T>(
   cacheKey: string,
-  fetchFn: () => Promise<ApiResponse<T>>
+  fetchFn: () => Promise<ApiResponse<T>>,
 ): Promise<ApiResponse<T>> {
   // Try to fetch fresh data
   const response = await fetchFn();
@@ -358,7 +376,7 @@ export interface DiseaseAnalysis {
   detected: boolean;
   disease: string | null;
   confidence: number;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   symptoms: string[];
   causes: string[];
   treatment: string[];
@@ -373,6 +391,7 @@ export interface DiseaseScanResult {
   scanDate: string;
   title: string;
   severity: string;
+  imageUrl: string;
   analysis: DiseaseAnalysis;
 }
 
@@ -384,10 +403,10 @@ export interface UploadUrlResponse {
 }
 
 export async function getDiseaseScanUploadUrl(
-  farmId: string
+  farmId: string,
 ): Promise<ApiResponse<UploadUrlResponse>> {
   return apiCall<UploadUrlResponse>(
-    `/disease-scan/upload-url?farmId=${encodeURIComponent(farmId)}`
+    `/disease-scan/upload-url?farmId=${encodeURIComponent(farmId)}`,
   );
 }
 
@@ -395,22 +414,25 @@ export async function analyzeDiseaseScan(
   farmId: string,
   scanId: string,
   key: string,
-  cropType?: string
-): Promise<ApiResponse<{ success: boolean; scanId: string; analysis: DiseaseAnalysis }>> {
-  return apiCall<{ success: boolean; scanId: string; analysis: DiseaseAnalysis }>(
-    '/disease-scan/analyze',
-    {
-      method: 'POST',
-      body: JSON.stringify({ farmId, scanId, key, cropType }),
-    }
-  );
+  cropType?: string,
+): Promise<
+  ApiResponse<{ success: boolean; scanId: string; analysis: DiseaseAnalysis }>
+> {
+  return apiCall<{
+    success: boolean;
+    scanId: string;
+    analysis: DiseaseAnalysis;
+  }>("/disease-scan/analyze", {
+    method: "POST",
+    body: JSON.stringify({ farmId, scanId, key, cropType }),
+  });
 }
 
 export async function getDiseaseScanHistory(
-  farmId: string
+  farmId: string,
 ): Promise<ApiResponse<{ farmId: string; scans: DiseaseScanResult[] }>> {
   return apiCall<{ farmId: string; scans: DiseaseScanResult[] }>(
-    `/disease-scan?farmId=${encodeURIComponent(farmId)}`
+    `/disease-scan?farmId=${encodeURIComponent(farmId)}`,
   );
 }
 
@@ -420,23 +442,37 @@ export async function getDiseaseScanHistory(
 
 export interface ThreatAnalysis {
   fire: { detected: boolean; confidence: number; description: string | null };
-  human: { detected: boolean; confidence: number; count: number; activity: string | null; suspicious: boolean };
-  animal: { detected: boolean; confidence: number; species: string[]; description: string | null };
-  overallThreat: 'none' | 'low' | 'medium' | 'high' | 'critical';
+  human: {
+    detected: boolean;
+    confidence: number;
+    count: number;
+    activity: string | null;
+    suspicious: boolean;
+  };
+  animal: {
+    detected: boolean;
+    confidence: number;
+    species: string[];
+    description: string | null;
+  };
+  overallThreat: "none" | "low" | "medium" | "high" | "critical";
   recommendations: string[];
 }
 
 export async function analyzeThreat(
   farmId: string,
-  imageData: string // base64 JPEG
-): Promise<ApiResponse<{ farmId: string; analysis: ThreatAnalysis; analyzedAt: string }>> {
-  return apiCall<{ farmId: string; analysis: ThreatAnalysis; analyzedAt: string }>(
-    '/threat-detect',
-    {
-      method: 'POST',
-      body: JSON.stringify({ farmId, imageData }),
-    }
-  );
+  imageData: string, // base64 JPEG
+): Promise<
+  ApiResponse<{ farmId: string; analysis: ThreatAnalysis; analyzedAt: string }>
+> {
+  return apiCall<{
+    farmId: string;
+    analysis: ThreatAnalysis;
+    analyzedAt: string;
+  }>("/threat-detect", {
+    method: "POST",
+    body: JSON.stringify({ farmId, imageData }),
+  });
 }
 
 // ============================================================================
@@ -450,9 +486,11 @@ export interface AgentStatus {
 }
 
 export async function getAgentStatus(
-  farmId: string
+  farmId: string,
 ): Promise<ApiResponse<AgentStatus>> {
-  return apiCall<AgentStatus>(`/agent-heartbeat?farmId=${encodeURIComponent(farmId)}`);
+  return apiCall<AgentStatus>(
+    `/agent-heartbeat?farmId=${encodeURIComponent(farmId)}`,
+  );
 }
 
 // ============================================================================
@@ -481,9 +519,9 @@ export interface IrrigationResponse {
 
 export async function getIrrigationRecommendations(
   farmId: string,
-  userId: string
+  userId: string,
 ): Promise<ApiResponse<IrrigationResponse>> {
   return apiCall<IrrigationResponse>(
-    `/irrigation?farmId=${encodeURIComponent(farmId)}&userId=${encodeURIComponent(userId)}`
+    `/irrigation?farmId=${encodeURIComponent(farmId)}&userId=${encodeURIComponent(userId)}`,
   );
 }
