@@ -564,10 +564,15 @@ export default function DiseaseScanner() {
 
           <div className="space-y-3 mt-4">
             {scanHistory.slice(0, 5).map((scan) => (
-              <div
-                key={scan.scanId}
-                className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-              >
+                <div
+                  key={scan.scanId}
+                  onClick={() => {
+                    setSelectedImage(scan.imageUrl);
+                    setAnalysisResult(scan.analysis);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="flex items-center gap-4 p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                >
                 <div className={`p-2 rounded-full ${scan.analysis.detected ? 'bg-red-100' : 'bg-green-100'}`}>
                   {scan.analysis.detected ? (
                     <AlertTriangle className="w-5 h-5 text-red-600" />

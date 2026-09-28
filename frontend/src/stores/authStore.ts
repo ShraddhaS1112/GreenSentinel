@@ -5,8 +5,8 @@
  * AWS Cognito phone+OTP authentication.
  */
 
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
 import {
   signIn,
   signUp,
@@ -14,8 +14,8 @@ import {
   signOut,
   getCurrentUser,
   fetchAuthSession,
-} from 'aws-amplify/auth';
-import type { Language } from '@/stores/preferencesStore';
+} from "aws-amplify/auth";
+import type { Language } from "@/stores/preferencesStore";
 
 // =============================================================================
 // TYPES
@@ -39,7 +39,7 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   cognitoConfigured: boolean;
-  signInStep: 'PHONE' | 'OTP' | 'DONE';
+  signInStep: "PHONE" | "OTP" | "DONE";
   pendingPhoneNumber: string | null;
 
   // Actions
@@ -71,7 +71,7 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       error: null,
       cognitoConfigured: false,
-      signInStep: 'PHONE',
+      signInStep: "PHONE",
       pendingPhoneNumber: null,
 
       // Set Cognito configured status
@@ -85,13 +85,15 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null, pendingPhoneNumber: phoneNumber });
 
         // Format phone number to E.164 (+91XXXXXXXXXX)
-        const cleaned = phoneNumber.replace(/\D/g, '');
-        const formattedPhone = cleaned.startsWith('91') ? `+${cleaned}` : `+91${cleaned}`;
+        const cleaned = phoneNumber.replace(/\D/g, "");
+        const formattedPhone = cleaned.startsWith("91")
+          ? `+${cleaned}`
+          : `+91${cleaned}`;
 
         if (!cognitoConfigured) {
           // Demo mode - just move to OTP step
           await new Promise((r) => setTimeout(r, 500));
-          set({ isLoading: false, signInStep: 'OTP' });
+          set({ isLoading: false, signInStep: "OTP" });
           return true;
         }
 
@@ -112,17 +114,20 @@ export const useAuthStore = create<AuthState>()(
                 },
               },
             });
-            console.log('New user signed up:', formattedPhone);
+            console.log("New user signed up:", formattedPhone);
           } catch (signUpErr: unknown) {
-            const signUpError = signUpErr as { name?: string; message?: string };
-            console.log('Sign up result:', signUpError.name);
+            const signUpError = signUpErr as {
+              name?: string;
+              message?: string;
+            };
+            console.log("Sign up result:", signUpError.name);
 
             // User already exists - that's fine, proceed to sign in
-            if (signUpError.name === 'UsernameExistsException') {
-              console.log('User already exists, proceeding to sign in');
+            if (signUpError.name === "UsernameExistsException") {
+              console.log("User already exists, proceeding to sign in");
             } else {
               // Other sign-up error
-              console.error('Sign up failed:', signUpError);
+              console.error("Sign up failed:", signUpError);
             }
           }
 
@@ -130,33 +135,36 @@ export const useAuthStore = create<AuthState>()(
           const result = await signIn({
             username: formattedPhone,
             options: {
-              authFlowType: 'CUSTOM_WITHOUT_SRP',
+              authFlowType: "CUSTOM_WITHOUT_SRP",
             },
           });
 
-          console.log('Sign in result:', result);
+          console.log("Sign in result:", result);
 
-          if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE') {
-            set({ isLoading: false, signInStep: 'OTP' });
+          if (
+            result.nextStep?.signInStep ===
+            "CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE"
+          ) {
+            set({ isLoading: false, signInStep: "OTP" });
             return true;
           }
 
           // If already signed in
           if (result.isSignedIn) {
             await get().checkAuthState();
-            set({ isLoading: false, signInStep: 'DONE' });
+            set({ isLoading: false, signInStep: "DONE" });
             return true;
           }
 
-          set({ isLoading: false, signInStep: 'OTP' });
+          set({ isLoading: false, signInStep: "OTP" });
           return true;
         } catch (err: unknown) {
           const error = err as { name?: string; message?: string };
-          console.error('Auth error:', error);
+          console.error("Auth error:", error);
 
           set({
             isLoading: false,
-            error: error.message || 'Failed to send OTP',
+            error: error.message || "Failed to send OTP",
           });
           return false;
         }
@@ -173,13 +181,13 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: {
               userId: `demo_${Date.now()}`,
-              phoneNumber: pendingPhoneNumber || '',
-              name: 'Demo Farmer',
-              language: 'en',
+              phoneNumber: pendingPhoneNumber || "",
+              name: "Demo Farmer",
+              language: "en",
             },
             isAuthenticated: true,
             isLoading: false,
-            signInStep: 'DONE',
+            signInStep: "DONE",
           });
           return true;
         }
@@ -189,19 +197,22 @@ export const useAuthStore = create<AuthState>()(
             challengeResponse: otp,
           });
 
-          console.log('Confirm sign in result:', result);
+          console.log("Confirm sign in result:", result);
 
           if (result.isSignedIn) {
             await get().checkAuthState();
-            set({ isLoading: false, signInStep: 'DONE' });
+            set({ isLoading: false, signInStep: "DONE" });
             return true;
           }
 
           // If still not signed in, might need another challenge
-          if (result.nextStep?.signInStep === 'CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE') {
+          if (
+            result.nextStep?.signInStep ===
+            "CONFIRM_SIGN_IN_WITH_CUSTOM_CHALLENGE"
+          ) {
             set({
               isLoading: false,
-              error: 'Invalid OTP. Please try again.',
+              error: "Invalid OTP. Please try again.",
             });
             return false;
           }
@@ -210,10 +221,10 @@ export const useAuthStore = create<AuthState>()(
           return false;
         } catch (err: unknown) {
           const error = err as { message?: string };
-          console.error('Verify OTP error:', error);
+          console.error("Verify OTP error:", error);
           set({
             isLoading: false,
-            error: error.message || 'Invalid OTP',
+            error: error.message || "Invalid OTP",
           });
           return false;
         }
@@ -228,13 +239,16 @@ export const useAuthStore = create<AuthState>()(
             await signOut();
           }
         } catch (err) {
-          console.error('Logout error:', err);
+          console.error("Logout error:", err);
         }
+
+        // Explicitly clear persisted storage to prevent auto-login to previous user
+        localStorage.removeItem("green-sentinel-auth");
 
         set({
           user: null,
           isAuthenticated: false,
-          signInStep: 'PHONE',
+          signInStep: "PHONE",
           pendingPhoneNumber: null,
           error: null,
         });
@@ -253,16 +267,17 @@ export const useAuthStore = create<AuthState>()(
           const session = await fetchAuthSession();
 
           if (currentUser && session.tokens) {
-            const phoneNumber = currentUser.signInDetails?.loginId || currentUser.username;
+            const phoneNumber =
+              currentUser.signInDetails?.loginId || currentUser.username;
 
             set({
               user: {
                 userId: currentUser.userId,
                 phoneNumber: phoneNumber,
-                language: 'en',
+                language: "en",
               },
               isAuthenticated: true,
-              signInStep: 'DONE',
+              signInStep: "DONE",
             });
           }
         } catch {
@@ -270,7 +285,7 @@ export const useAuthStore = create<AuthState>()(
           set({
             user: null,
             isAuthenticated: false,
-            signInStep: 'PHONE',
+            signInStep: "PHONE",
           });
         }
       },
@@ -294,15 +309,15 @@ export const useAuthStore = create<AuthState>()(
       instantDemoLogin: () => {
         set({
           user: {
-            userId: 'sk-demo-user',
-            phoneNumber: '9876543210',
-            name: 'SK Demo Farmer',
-            language: 'en',
+            userId: "sk-demo-user",
+            phoneNumber: "9970187593",
+            name: "SK Demo Farmer",
+            language: "en",
             alertPreferences: { voiceEnabled: true, textEnabled: true },
           },
           isAuthenticated: true,
           isLoading: false,
-          signInStep: 'DONE',
+          signInStep: "DONE",
           error: null,
         });
       },
@@ -317,22 +332,22 @@ export const useAuthStore = create<AuthState>()(
           user: {
             userId: `demo_${Date.now()}`,
             phoneNumber,
-            name: 'Demo Farmer',
-            language: 'en',
+            name: "Demo Farmer",
+            language: "en",
           },
           isAuthenticated: true,
           isLoading: false,
-          signInStep: 'DONE',
+          signInStep: "DONE",
         });
       },
     }),
     {
-      name: 'green-sentinel-auth',
+      name: "green-sentinel-auth",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
-    }
-  )
+    },
+  ),
 );
